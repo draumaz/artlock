@@ -216,7 +216,7 @@ class MainActivity : ComponentActivity() {
                 // Appearance Section
                 CollapsibleSection(
                     title = stringResource(R.string.dimming_section_title),
-                    initialExpanded = false
+                    initialExpanded = true
                 ) {
                     AppearanceCard(
                         dimLevel = dimLevel,
