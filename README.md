@@ -1,20 +1,9 @@
 # 🎨 Artlock
 
-Artlock is a native Android application that transforms your device's lock screen and home screen into an immersive musical experience.
+Artlock watches what song is currently playing, pulls the artwork, and displays it as your lock screen background, like the [good](https://www.androidpolice.com/album-art-wallpapers-should-never-have-been-removed-but-material-you-is-the-time-to-bring-it-back/) [ol'](https://9to5google.com/2020/08/02/android-11-lockscreen-art) [days](https://www.pcmag.com/news/report-android-11-scraps-lock-screen-album-art)!
 
 |            Disabled            |             Enabled             |
 |:------------------------------:|:-------------------------------:|
 | ![Home](img/off.jpg)           | ![Search](img/on.jpg)           |
 
 ---
-
-### How it works:
-1. **Detection:** It monitors your music notifications to identify the currently playing track (Spotify, Apple Music, etc.).
-2. **Immersive Wallpaper:** Automatically applies the animated album cover (Canvas) or high-resolution static artwork as your wallpaper.
-3. **Smart Fallback:** If a video isn't available, it fetches high-quality static art via the iTunes API.
-4. **Customization:** Adjust dimming and blur levels in real-time to ensure your icons and widgets stay legible.
-
-### Key Technologies:
-* **Jetpack Compose & Material 3:** For a modern, fluid user interface.
-* **AndroidX Media3 (ExoPlayer):** Powering smooth video wallpaper playback.
-* **NotificationListenerService:** For real-time track synchronization.
