@@ -164,7 +164,7 @@ class MainActivity : ComponentActivity() {
                     title = { Text(stringResource(R.string.app_name)) },
                     actions = {
                         IconButton(onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, "https://github.com/draumaz/Artlock".toUri())
+                            val intent = Intent(Intent.ACTION_VIEW, "https://github.com/draumaz/artlock".toUri())
                             startActivity(intent)
                         }) {
                             Icon(
