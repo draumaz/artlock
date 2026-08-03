@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Music Wallpaper</string>
+    <string name="app_name">Artlock</string>
     <string name="notification_access_allowed">✅ Acesso às notificações</string>
     <string name="notification_access_blocked">❌ Acesso às notificações</string>
     <string name="dim_level_label">Escurecimento da Capa Estática: %1$d%%</string>

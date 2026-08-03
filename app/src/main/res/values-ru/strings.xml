@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Music Wallpaper</string>
+    <string name="app_name">Artlock</string>
     <string name="notification_access_allowed">✅ Доступ к уведомлениям</string>
     <string name="notification_access_blocked">❌ Доступ к уведомлениям</string>
     <string name="dim_level_label">Затемнение обложки: %1$d%%</string>

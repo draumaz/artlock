@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.lucasvinicius.musicwallpaper"
+    namespace = "io.github.draumaz.artlock"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.lucasvinicius.musicwallpaper"
+        applicationId = "io.github.draumaz.artlock"
         minSdk = 28
         targetSdk = 36
         versionCode = 1

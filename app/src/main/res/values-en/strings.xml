@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Music Wallpaper</string>
+    <string name="app_name">Artlock</string>
     <string name="notification_access_allowed">✅ Notification Access</string>
     <string name="notification_access_blocked">❌ Notification Access</string>
     <string name="dim_level_label">Static Cover Dimming: %1$d%%</string>
