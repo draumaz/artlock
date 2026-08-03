@@ -29,4 +29,7 @@
     <string name="chip_background">Fundo</string>
     <string name="chip_wallpaper">Wallpaper</string>
     <string name="chip_apps">Apps</string>
+    <string name="wallpaper_hint_title">Nada aparece?</string>
+    <string name="wallpaper_hint_message">Tente reiniciar seus aplicativos de música. Alguns aplicativos precisam ser reiniciados para começar a transmitir informações de mídia.</string>
+    <string name="ok">OK</string>
 </resources>

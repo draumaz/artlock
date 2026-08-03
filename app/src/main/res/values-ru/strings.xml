@@ -29,4 +29,7 @@
     <string name="chip_background">Фон</string>
     <string name="chip_wallpaper">Обои</string>
     <string name="chip_apps">Приложения</string>
+    <string name="wallpaper_hint_title">Ничего не отображается?</string>
+    <string name="wallpaper_hint_message">Попробуйте перезапустить музыкальные приложения. Некоторым приложениям требуется перезапуск, чтобы начать трансляцию медиаданных.</string>
+    <string name="ok">OK</string>
 </resources>

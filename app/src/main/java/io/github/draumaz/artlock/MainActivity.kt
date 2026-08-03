@@ -141,6 +141,9 @@ class MainActivity : ComponentActivity() {
     fun MainScreen(onNavigateToAppSelection: () -> Unit, onPickImage: () -> Unit) {
         val app = application as App
         var isNotificationEnabled by remember { mutableStateOf(checkNotificationAccess()) }
+        var showWallpaperHint by remember { mutableStateOf(false) }
+        var wasWallpaperPickerLaunched by remember { mutableStateOf(false) }
+
         val wallpaperContent by app.wallpaperStateStore.contentFlow.collectAsStateWithLifecycle(initialValue = null)
         val dimLevel by app.wallpaperStateStore.dimLevelFlow.collectAsStateWithLifecycle(initialValue = 30)
         val blurLevel by app.wallpaperStateStore.blurLevelFlow.collectAsStateWithLifecycle(initialValue = 0)
@@ -150,12 +153,29 @@ class MainActivity : ComponentActivity() {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
                     isNotificationEnabled = checkNotificationAccess()
+                    if (wasWallpaperPickerLaunched) {
+                        showWallpaperHint = true
+                        wasWallpaperPickerLaunched = false
+                    }
                 }
             }
             lifecycleOwner.lifecycle.addObserver(observer)
             onDispose {
                 lifecycleOwner.lifecycle.removeObserver(observer)
             }
+        }
+
+        if (showWallpaperHint) {
+            AlertDialog(
+                onDismissRequest = { showWallpaperHint = false },
+                title = { Text(stringResource(R.string.wallpaper_hint_title)) },
+                text = { Text(stringResource(R.string.wallpaper_hint_message)) },
+                confirmButton = {
+                    TextButton(onClick = { showWallpaperHint = false }) {
+                        Text(stringResource(R.string.ok))
+                    }
+                }
+            )
         }
 
         Scaffold(
@@ -204,6 +224,7 @@ class MainActivity : ComponentActivity() {
                     ActionsCard(
                         onPickImage = onPickImage,
                         onSetWallpaper = {
+                            wasWallpaperPickerLaunched = true
                             val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
                                 putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(this@MainActivity, AnimatedWallpaperService::class.java))
                             }

@@ -29,4 +29,7 @@
     <string name="chip_background">Background</string>
     <string name="chip_wallpaper">Wallpaper</string>
     <string name="chip_apps">Apps</string>
+    <string name="wallpaper_hint_title">Nothing showing up?</string>
+    <string name="wallpaper_hint_message">Try restarting your music apps. Some apps need to be restarted to start broadcasting media info.</string>
+    <string name="ok">OK</string>
 </resources>
