@@ -9,3 +9,11 @@ Artlock watches what song is currently playing, pulls the artwork, and sets it a
 | ![Home](img/off.jpg)           | ![Search](img/on.jpg)           |
 
 ---
+
+# Usage
+
+- Allow access to notifications. This is so Artlock can get information on your currently playing music.
+- Press Background, and select a wallpaper. This is what will be shown when no music is playing.
+- Press Wallpaper, and set as Lock Screen.
+- Force stop any running media.
+- Success!
