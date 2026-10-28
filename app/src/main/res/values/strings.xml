@@ -17,7 +17,7 @@
     <string name="animated_url_label">Animated URL: %1$s</string>
     <string name="static_path_label">Static Path: %1$s</string>
     <string name="settings_title">Configurações</string>
-    <string name="dimming_section_title">Aparência</string>
+    <string name="dimming_section_title">Efeitos</string>
     <string name="actions_section_title">Ações</string>
     <string name="permissions_section_title">Permissões</string>
     <string name="help_description">Abrir GitHub do projeto</string>
@@ -40,4 +40,5 @@
     <string name="percent_value" translatable="false">%1$d%%</string>
     <string name="step_label">Passo %1$d</string>
     <string name="wallpaper_set_summary">O Artlock está definido como papel de parede da tela de bloqueio</string>
+    <string name="optional_label">Opcional</string>
 </resources>

@@ -490,7 +490,7 @@ fun ActionsGroup(
     val actions = listOf(
         ActionItem(Icons.Default.Image, R.string.chip_background, R.string.btn_choose_default_photo, step = 1, onPickImage, image = backgroundImage),
         ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper, done = isWallpaperActive, doneSummary = R.string.wallpaper_set_summary),
-        ActionItem(Icons.Default.LibraryMusic, R.string.chip_apps, R.string.btn_select_music_apps, step = null, onNavigateToAppSelection)
+        ActionItem(Icons.Default.LibraryMusic, R.string.chip_apps, R.string.btn_select_music_apps, step = null, onNavigateToAppSelection, optional = true)
     )
     SegmentedGroup {
         actions.forEachIndexed { index, action ->
@@ -553,8 +553,10 @@ private fun ActionListItem(
         colors = colors,
         contentPadding = OptionPadding,
         leadingContent = { LeadingIcon(action.icon) },
-        overlineContent = action.step?.let { step ->
-            { Text(stringResource(R.string.step_label, step), color = overlineColor) }
+        overlineContent = when {
+            action.step != null -> { { Text(stringResource(R.string.step_label, action.step), color = overlineColor) } }
+            action.optional -> { { Text(stringResource(R.string.optional_label), color = overlineColor) } }
+            else -> null
         },
         supportingContent = {
             val summary = action.doneSummary?.takeIf { action.done } ?: action.summary
@@ -580,7 +582,8 @@ private data class ActionItem(
     val onClick: () -> Unit,
     val image: ImageBitmap? = null,
     val done: Boolean = false,
-    val doneSummary: Int? = null
+    val doneSummary: Int? = null,
+    val optional: Boolean = false
 )
 
 /** Material's color scheme has no success role, so use the Material green tones for each theme. */
@@ -600,18 +603,18 @@ fun AppearanceGroup(
         SliderItem(
             index = 0,
             count = 2,
-            icon = Icons.Default.Brightness6,
-            title = stringResource(R.string.chip_dimming),
-            value = dimLevel,
-            onValueChange = onDimChange
-        )
-        SliderItem(
-            index = 1,
-            count = 2,
             icon = Icons.Default.BlurOn,
             title = stringResource(R.string.chip_blur),
             value = blurLevel,
             onValueChange = onBlurChange
+        )
+        SliderItem(
+            index = 1,
+            count = 2,
+            icon = Icons.Default.Brightness6,
+            title = stringResource(R.string.chip_dimming),
+            value = dimLevel,
+            onValueChange = onDimChange
         )
     }
 }
@@ -663,7 +666,7 @@ fun SettingsPreview() {
                 NowPlayingItem(null)
                 SectionHeader("Actions")
                 ActionsGroup(backgroundImagePath = null, isWallpaperActive = true, onPickImage = {}, onSetWallpaper = {}, onNavigateToAppSelection = {})
-                SectionHeader("Appearance")
+                SectionHeader("Effects")
                 AppearanceGroup(dimLevel = 30, onDimChange = {}, blurLevel = 10, onBlurChange = {})
             }
         }

@@ -1,5 +1,6 @@
 package io.github.draumaz.artlock.notification
 
+import android.graphics.Bitmap
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -25,12 +26,22 @@ class MusicNotificationListenerService : NotificationListenerService() {
     private var lastProcessedTrackKey: String? = null
     private var lastSavedContent: WallpaperContent? = null
     private var lastUpdateTime: Long = 0L
+    // True when the current track ended up with no real artwork (missing, or only a placeholder)
+    private var lastArtworkMissing = false
 
     private var supportedPackages: Set<String> = SupportedMusicApps.packages
 
     companion object {
         /** System artwork smaller than this (shortest side) is replaced by iTunes artwork when available. */
         private const val MIN_SYSTEM_ARTWORK_PX = 600
+
+        /**
+         * Apps like Spotify supply a generic flat icon (e.g. a grey disc) when a track has no art.
+         * Real covers downsampled to 24x24 have dozens of distinct 4-bit colors; placeholders have
+         * only a handful. A false positive just costs an iTunes lookup, since we fall back to it.
+         */
+        private const val MIN_ARTWORK_COLORS = 16
+        private const val COLOR_SAMPLE_SIZE = 24
     }
 
     override fun onCreate() {
@@ -56,7 +67,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
         val trackKey = "${trackInfo.title}-${trackInfo.artist}"
 
         if (trackInfo.isPlaying) {
-            if (trackKey == lastProcessedTrackKey) {
+            // Apps like Spotify post a placeholder first and the real cover in a later update, so
+            // re-resolve the same track if we have no real artwork yet and the update brings some
+            val artworkUpgrade = trackKey == lastProcessedTrackKey && lastSavedContent != null &&
+                lastArtworkMissing && trackInfo.staticArtworkBitmap?.looksLikePlaceholder() == false
+            if (trackKey == lastProcessedTrackKey && !artworkUpgrade) {
                 if (lastSavedContent == null) {
                     Log.d("MusicNotification", "Resolution already in progress for $trackKey")
                     return
@@ -76,21 +91,35 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastSavedContent = null
             resolutionJob?.cancel()
             
-            Log.d("MusicNotification", "Starting resolution for $trackKey")
+            Log.d("MusicNotification", if (artworkUpgrade) "Real artwork arrived for $trackKey, re-resolving" else "Starting resolution for $trackKey")
             resolutionJob = serviceScope.launch {
                 // Prefer the artwork Android supplies with the media session/notification
                 val systemContent = getImmediateContent(trackInfo, staticArtworkStorage)
                 val systemBitmap = trackInfo.staticArtworkBitmap
-                val finalContent = if (systemBitmap != null && minOf(systemBitmap.width, systemBitmap.height) >= MIN_SYSTEM_ARTWORK_PX) {
+                val systemArtworkIssue = when {
+                    systemBitmap == null -> "missing"
+                    minOf(systemBitmap.width, systemBitmap.height) < MIN_SYSTEM_ARTWORK_PX -> "${systemBitmap.width}x${systemBitmap.height}"
+                    systemBitmap.looksLikePlaceholder() -> "a placeholder"
+                    else -> null
+                }
+                val isPlaceholder = systemArtworkIssue == "a placeholder"
+                // A placeholder is treated as no artwork, so the wallpaper shows the default background
+                val fallbackContent = if (isPlaceholder) {
+                    systemContent.copy(contentType = WallpaperContentType.NONE, staticImagePath = null)
+                } else {
+                    systemContent
+                }
+                val finalContent = if (systemBitmap != null && systemArtworkIssue == null) {
                     Log.d("MusicNotification", "Using system artwork (${systemBitmap.width}x${systemBitmap.height}) for $trackKey")
                     systemContent
                 } else {
-                    // Missing or low-res system artwork: show what we have now, then try iTunes
-                    Log.d("MusicNotification", "System artwork ${systemBitmap?.let { "${it.width}x${it.height}" } ?: "missing"} for $trackKey, querying iTunes")
-                    app.liveWallpaperFlow.emit(systemContent)
-                    resolveRemoteContent(app, trackInfo, staticArtworkStorage) ?: systemContent
+                    // Missing, low-res or placeholder system artwork: show what we have now, then try iTunes
+                    Log.d("MusicNotification", "System artwork is $systemArtworkIssue for $trackKey, querying iTunes")
+                    app.liveWallpaperFlow.emit(fallbackContent)
+                    resolveRemoteContent(app, trackInfo, staticArtworkStorage) ?: fallbackContent
                 }
 
+                lastArtworkMissing = finalContent.staticImagePath == null
                 lastSavedContent = finalContent
                 lastUpdateTime = System.currentTimeMillis()
                 Log.d("MusicNotification", "Finished resolution for $trackKey")
@@ -140,6 +169,18 @@ class MusicNotificationListenerService : NotificationListenerService() {
         }
         app.liveWallpaperFlow.emit(content)
         app.wallpaperStateStore.save(content)
+    }
+
+    private fun Bitmap.looksLikePlaceholder(): Boolean = try {
+        val sample = Bitmap.createScaledBitmap(this, COLOR_SAMPLE_SIZE, COLOR_SAMPLE_SIZE, true)
+        val pixels = IntArray(COLOR_SAMPLE_SIZE * COLOR_SAMPLE_SIZE)
+        sample.getPixels(pixels, 0, COLOR_SAMPLE_SIZE, 0, 0, COLOR_SAMPLE_SIZE, COLOR_SAMPLE_SIZE)
+        if (sample !== this) sample.recycle()
+        // Keep the top 4 bits of each RGB channel
+        pixels.mapTo(HashSet()) { (it shr 4) and 0x0F0F0F }.size < MIN_ARTWORK_COLORS
+    } catch (e: Exception) {
+        // e.g. hardware bitmaps can't be read back; assume it's real artwork
+        false
     }
 
     private suspend fun resolveRemoteContent(app: App, trackInfo: io.github.draumaz.artlock.data.model.TrackInfo, storage: StaticArtworkStorage): WallpaperContent? {

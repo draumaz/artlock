@@ -17,7 +17,7 @@
     <string name="animated_url_label">URL анимации: %1$s</string>
     <string name="static_path_label">Путь к изображению: %1$s</string>
     <string name="settings_title">Настройки</string>
-    <string name="dimming_section_title">Внешний вид</string>
+    <string name="dimming_section_title">Эффекты</string>
     <string name="actions_section_title">Действия</string>
     <string name="permissions_section_title">Разрешения</string>
     <string name="help_description">Открыть GitHub проекта</string>
@@ -39,4 +39,5 @@
     <string name="nothing_playing_summary">Включите песню в поддерживаемом приложении</string>
     <string name="step_label">Шаг %1$d</string>
     <string name="wallpaper_set_summary">Artlock установлен как обои экрана блокировки</string>
+    <string name="optional_label">Необязательно</string>
 </resources>

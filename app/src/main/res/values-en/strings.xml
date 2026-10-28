@@ -17,7 +17,7 @@
     <string name="animated_url_label">Animated URL: %1$s</string>
     <string name="static_path_label">Static Path: %1$s</string>
     <string name="settings_title">Settings</string>
-    <string name="dimming_section_title">Appearance</string>
+    <string name="dimming_section_title">Effects</string>
     <string name="actions_section_title">Actions</string>
     <string name="permissions_section_title">Permissions</string>
     <string name="help_description">Open project GitHub</string>
@@ -39,4 +39,5 @@
     <string name="nothing_playing_summary">Play a song in a supported app</string>
     <string name="step_label">Step %1$d</string>
     <string name="wallpaper_set_summary">Artlock is set as your Lock screen wallpaper</string>
+    <string name="optional_label">Optional</string>
 </resources>
