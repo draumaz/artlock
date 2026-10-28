@@ -6,7 +6,7 @@
     <string name="blur_level_label">Desfoque da Capa Estática: %1$d%%</string>
     <string name="btn_notification_access">1. Conceder acesso às notificações</string>
     <string name="btn_choose_default_photo">2. Definir fundo (para quando nada está tocando)</string>
-    <string name="btn_choose_wallpaper">3. Definir como papel de parede</string>
+    <string name="btn_choose_wallpaper">3. Definir como papel de parede da tela de bloqueio</string>
     <string name="btn_select_music_apps">4. Selecionar apps de música</string>
     <string name="toast_wallpaper_saved">Papel de parede padrão salvo!</string>
     <string name="live_status_header">A tocar</string>
@@ -39,4 +39,5 @@
     <string name="nothing_playing_summary">Toque uma música em um app compatível</string>
     <string name="percent_value" translatable="false">%1$d%%</string>
     <string name="step_label">Passo %1$d</string>
+    <string name="wallpaper_set_summary">O Artlock está definido como papel de parede da tela de bloqueio</string>
 </resources>

@@ -6,7 +6,7 @@
     <string name="blur_level_label">Static Cover Blur: %1$d%%</string>
     <string name="btn_notification_access">1. Grant notification access</string>
     <string name="btn_choose_default_photo">2. Set background (for when nothing\'s playing)</string>
-    <string name="btn_choose_wallpaper">3. Set as wallpaper</string>
+    <string name="btn_choose_wallpaper">3. Set as Lock screen wallpaper</string>
     <string name="btn_select_music_apps">4. Select music apps</string>
     <string name="toast_wallpaper_saved">Default wallpaper saved!</string>
     <string name="live_status_header">Now Playing</string>
@@ -38,4 +38,5 @@
     <string name="nothing_playing">Nothing playing</string>
     <string name="nothing_playing_summary">Play a song in a supported app</string>
     <string name="step_label">Step %1$d</string>
+    <string name="wallpaper_set_summary">Artlock is set as your Lock screen wallpaper</string>
 </resources>

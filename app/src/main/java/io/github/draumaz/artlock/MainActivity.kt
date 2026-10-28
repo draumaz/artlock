@@ -4,6 +4,7 @@ import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
@@ -22,6 +23,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -54,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
@@ -153,18 +157,21 @@ class MainActivity : ComponentActivity() {
     fun MainScreen(onNavigateToAppSelection: () -> Unit, onPickImage: () -> Unit) {
         val app = application as App
         var isNotificationEnabled by remember { mutableStateOf(checkNotificationAccess()) }
+        var isWallpaperActive by remember { mutableStateOf(checkWallpaperActive()) }
         var showWallpaperHint by remember { mutableStateOf(false) }
         var wasWallpaperPickerLaunched by remember { mutableStateOf(false) }
 
         val wallpaperContent by app.wallpaperStateStore.contentFlow.collectAsStateWithLifecycle(initialValue = null)
         val dimLevel by app.wallpaperStateStore.dimLevelFlow.collectAsStateWithLifecycle(initialValue = 30)
         val blurLevel by app.wallpaperStateStore.blurLevelFlow.collectAsStateWithLifecycle(initialValue = 0)
+        val defaultWallpaperPath by app.wallpaperStateStore.defaultWallpaperFlow.collectAsStateWithLifecycle(initialValue = null)
 
         val lifecycleOwner = LocalLifecycleOwner.current
         DisposableEffect(lifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
                     isNotificationEnabled = checkNotificationAccess()
+                    isWallpaperActive = checkWallpaperActive()
                     if (wasWallpaperPickerLaunched) {
                         showWallpaperHint = true
                         wasWallpaperPickerLaunched = false
@@ -239,6 +246,8 @@ class MainActivity : ComponentActivity() {
 
                 SectionHeader(stringResource(R.string.actions_section_title))
                 ActionsGroup(
+                    backgroundImagePath = defaultWallpaperPath,
+                    isWallpaperActive = isWallpaperActive,
                     onPickImage = onPickImage,
                     onSetWallpaper = {
                         wasWallpaperPickerLaunched = true
@@ -267,6 +276,16 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    /** Whether Artlock's live wallpaper is currently set on the home or (Android 14+) lock screen. */
+    private fun checkWallpaperActive(): Boolean {
+        val component = ComponentName(this, AnimatedWallpaperService::class.java)
+        val wallpaperManager = WallpaperManager.getInstance(this)
+        val onHome = wallpaperManager.wallpaperInfo?.component == component
+        val onLock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            wallpaperManager.getWallpaperInfo(WallpaperManager.FLAG_LOCK)?.component == component
+        return onHome || onLock
     }
 
     private fun checkNotificationAccess(): Boolean {
@@ -459,36 +478,97 @@ private fun decodeThumbnail(path: String, targetPx: Int = 168): ImageBitmap? = t
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ActionsGroup(
+    backgroundImagePath: String?,
+    isWallpaperActive: Boolean,
     onPickImage: () -> Unit,
     onSetWallpaper: () -> Unit,
     onNavigateToAppSelection: () -> Unit
 ) {
+    val backgroundImage by produceState<ImageBitmap?>(initialValue = null, backgroundImagePath) {
+        value = backgroundImagePath?.let { path -> withContext(Dispatchers.IO) { decodeThumbnail(path, targetPx = 360) } }
+    }
     val actions = listOf(
-        ActionItem(Icons.Default.Image, R.string.chip_background, R.string.btn_choose_default_photo, step = 1, onPickImage),
-        ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper),
+        ActionItem(Icons.Default.Image, R.string.chip_background, R.string.btn_choose_default_photo, step = 1, onPickImage, image = backgroundImage),
+        ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper, done = isWallpaperActive, doneSummary = R.string.wallpaper_set_summary),
         ActionItem(Icons.Default.LibraryMusic, R.string.chip_apps, R.string.btn_select_music_apps, step = null, onNavigateToAppSelection)
     )
     SegmentedGroup {
         actions.forEachIndexed { index, action ->
-            SegmentedListItem(
-                onClick = action.onClick,
-                shapes = ListItemDefaults.segmentedShapes(index = index, count = actions.size),
-                contentPadding = OptionPadding,
-                leadingContent = { LeadingIcon(action.icon) },
-                overlineContent = action.step?.let { step ->
-                    {
-                        Text(
-                            stringResource(R.string.step_label, step),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                supportingContent = { Text(stringResource(action.summary).substringAfter(". ")) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
-            ) {
-                Text(stringResource(action.title))
+            val shapes = ListItemDefaults.segmentedShapes(index = index, count = actions.size)
+            val image = action.image
+            if (image != null) {
+                // Show the chosen image behind the row, under a scrim that keeps the text legible.
+                // The shape is held constant so the image's clip always matches the row.
+                Box(modifier = Modifier.clip(shapes.shape)) {
+                    Image(
+                        bitmap = image,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color.Black.copy(alpha = 0.75f), Color.Black.copy(alpha = 0.35f))
+                                )
+                            )
+                    )
+                    ActionListItem(
+                        action = action,
+                        shapes = shapes.copy(
+                            pressedShape = shapes.shape,
+                            focusedShape = shapes.shape,
+                            hoveredShape = shapes.shape
+                        ),
+                        colors = ListItemDefaults.segmentedColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White,
+                            supportingContentColor = Color.White.copy(alpha = 0.85f),
+                            overlineContentColor = Color.White,
+                            trailingContentColor = Color.White
+                        ),
+                        overlineColor = Color.White
+                    )
+                }
+            } else {
+                ActionListItem(action = action, shapes = shapes)
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ActionListItem(
+    action: ActionItem,
+    shapes: ListItemShapes,
+    colors: ListItemColors = ListItemDefaults.segmentedColors(),
+    overlineColor: Color = MaterialTheme.colorScheme.primary
+) {
+    SegmentedListItem(
+        onClick = action.onClick,
+        shapes = shapes,
+        colors = colors,
+        contentPadding = OptionPadding,
+        leadingContent = { LeadingIcon(action.icon) },
+        overlineContent = action.step?.let { step ->
+            { Text(stringResource(R.string.step_label, step), color = overlineColor) }
+        },
+        supportingContent = {
+            val summary = action.doneSummary?.takeIf { action.done } ?: action.summary
+            Text(stringResource(summary).substringAfter(". "))
+        },
+        trailingContent = {
+            if (action.done) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor())
+            } else {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            }
+        }
+    ) {
+        Text(stringResource(action.title))
     }
 }
 
@@ -497,8 +577,16 @@ private data class ActionItem(
     val title: Int,
     val summary: Int,
     val step: Int?,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
+    val image: ImageBitmap? = null,
+    val done: Boolean = false,
+    val doneSummary: Int? = null
 )
+
+/** Material's color scheme has no success role, so use the Material green tones for each theme. */
+@Composable
+private fun successColor(): Color =
+    if (isSystemInDarkTheme()) Color(0xFF6DD58C) else Color(0xFF146C2E)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -574,7 +662,7 @@ fun SettingsPreview() {
                 SectionHeader("Now Playing")
                 NowPlayingItem(null)
                 SectionHeader("Actions")
-                ActionsGroup(onPickImage = {}, onSetWallpaper = {}, onNavigateToAppSelection = {})
+                ActionsGroup(backgroundImagePath = null, isWallpaperActive = true, onPickImage = {}, onSetWallpaper = {}, onNavigateToAppSelection = {})
                 SectionHeader("Appearance")
                 AppearanceGroup(dimLevel = 30, onDimChange = {}, blurLevel = 10, onBlurChange = {})
             }

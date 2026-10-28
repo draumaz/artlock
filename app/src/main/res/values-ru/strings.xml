@@ -6,7 +6,7 @@
     <string name="blur_level_label">Размытие обложки: %1$d%%</string>
     <string name="btn_notification_access">1. Предоставить доступ к уведомлениям</string>
     <string name="btn_choose_default_photo">2. Установить фон (когда ничего не воспроизводится)</string>
-    <string name="btn_choose_wallpaper">3. Установить как обои</string>
+    <string name="btn_choose_wallpaper">3. Установить как обои экрана блокировки</string>
     <string name="btn_select_music_apps">4. Выбрать музыкальные приложения</string>
     <string name="toast_wallpaper_saved">Фото по умолчанию сохранено!</string>
     <string name="live_status_header">В эфире</string>
@@ -38,4 +38,5 @@
     <string name="nothing_playing">Ничего не играет</string>
     <string name="nothing_playing_summary">Включите песню в поддерживаемом приложении</string>
     <string name="step_label">Шаг %1$d</string>
+    <string name="wallpaper_set_summary">Artlock установлен как обои экрана блокировки</string>
 </resources>
