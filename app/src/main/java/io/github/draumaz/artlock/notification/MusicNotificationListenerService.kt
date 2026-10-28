@@ -28,6 +28,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
 
     private var supportedPackages: Set<String> = SupportedMusicApps.packages
 
+    companion object {
+        /** System artwork smaller than this (shortest side) is replaced by iTunes artwork when available. */
+        private const val MIN_SYSTEM_ARTWORK_PX = 600
+    }
+
     override fun onCreate() {
         super.onCreate()
         serviceScope.launch {
@@ -71,33 +76,19 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastSavedContent = null
             resolutionJob?.cancel()
             
-            // FAST PATH: Emit immediate fallback (notification bitmap) to the engine
-            serviceScope.launch {
-                val immediateContent = getImmediateContent(trackInfo, staticArtworkStorage)
-                app.liveWallpaperFlow.emit(immediateContent)
-            }
-
-            Log.d("MusicNotification", "Starting background resolution for $trackKey")
+            Log.d("MusicNotification", "Starting resolution for $trackKey")
             resolutionJob = serviceScope.launch {
-                val finalContent = when (val result = app.artworkRepository.resolveArtwork(trackInfo)) {
-                    is LookupResult.StaticHighRes -> {
-                        val path = staticArtworkStorage.downloadAndSave(result.imageUrl, trackInfo)
-                        if (path != null) {
-                            WallpaperContent(
-                                trackTitle = trackInfo.title,
-                                trackArtist = trackInfo.artist,
-                                trackAlbum = trackInfo.album,
-                                sourcePackage = trackInfo.packageName,
-                                contentType = WallpaperContentType.STATIC,
-                                animatedUrl = null,
-                                staticImagePath = path,
-                                updatedAt = System.currentTimeMillis()
-                            )
-                        } else {
-                            getImmediateContent(trackInfo, staticArtworkStorage)
-                        }
-                    }
-                    else -> getImmediateContent(trackInfo, staticArtworkStorage)
+                // Prefer the artwork Android supplies with the media session/notification
+                val systemContent = getImmediateContent(trackInfo, staticArtworkStorage)
+                val systemBitmap = trackInfo.staticArtworkBitmap
+                val finalContent = if (systemBitmap != null && minOf(systemBitmap.width, systemBitmap.height) >= MIN_SYSTEM_ARTWORK_PX) {
+                    Log.d("MusicNotification", "Using system artwork (${systemBitmap.width}x${systemBitmap.height}) for $trackKey")
+                    systemContent
+                } else {
+                    // Missing or low-res system artwork: show what we have now, then try iTunes
+                    Log.d("MusicNotification", "System artwork ${systemBitmap?.let { "${it.width}x${it.height}" } ?: "missing"} for $trackKey, querying iTunes")
+                    app.liveWallpaperFlow.emit(systemContent)
+                    resolveRemoteContent(app, trackInfo, staticArtworkStorage) ?: systemContent
                 }
 
                 lastSavedContent = finalContent
@@ -149,6 +140,21 @@ class MusicNotificationListenerService : NotificationListenerService() {
         }
         app.liveWallpaperFlow.emit(content)
         app.wallpaperStateStore.save(content)
+    }
+
+    private suspend fun resolveRemoteContent(app: App, trackInfo: io.github.draumaz.artlock.data.model.TrackInfo, storage: StaticArtworkStorage): WallpaperContent? {
+        val result = app.artworkRepository.resolveArtwork(trackInfo) as? LookupResult.StaticHighRes ?: return null
+        val path = storage.downloadAndSave(result.imageUrl, trackInfo) ?: return null
+        return WallpaperContent(
+            trackTitle = trackInfo.title,
+            trackArtist = trackInfo.artist,
+            trackAlbum = trackInfo.album,
+            sourcePackage = trackInfo.packageName,
+            contentType = WallpaperContentType.STATIC,
+            animatedUrl = null,
+            staticImagePath = path,
+            updatedAt = System.currentTimeMillis()
+        )
     }
 
     private suspend fun getImmediateContent(trackInfo: io.github.draumaz.artlock.data.model.TrackInfo, storage: StaticArtworkStorage): WallpaperContent {

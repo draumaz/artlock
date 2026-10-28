@@ -44,8 +44,12 @@ class NotificationMediaParser(private val context: Context) {
 
                 if (metadata != null) {
                     if (album == null) album = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM)?.trim()?.ifBlank { null }
-                    // Se a notificação mandou um Icon estranho, nós pegamos o Bitmap verdadeiro e limpo daqui:
-                    if (bitmap == null) bitmap = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
+                    // Session artwork is usually higher resolution than the notification icon; keep the largest
+                    bitmap = listOfNotNull(
+                        metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART),
+                        metadata.getBitmap(MediaMetadata.METADATA_KEY_ART),
+                        bitmap
+                    ).maxByOrNull { it.width * it.height }
                     if (title.isBlank()) title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim().orEmpty()
                     if (artist.isBlank()) artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim().orEmpty()
                 }
