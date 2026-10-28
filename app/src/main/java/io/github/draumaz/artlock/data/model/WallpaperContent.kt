@@ -6,7 +6,6 @@ data class WallpaperContent(
     val trackAlbum: String? = null,
     val sourcePackage: String? = null,
     val contentType: WallpaperContentType = WallpaperContentType.NONE,
-    val animatedUrl: String? = null,
     val staticImagePath: String? = null,
     val artworkSource: ArtworkSource? = null,
     // What the music app itself supplied ("WxH"), recorded even when iTunes artwork is used instead

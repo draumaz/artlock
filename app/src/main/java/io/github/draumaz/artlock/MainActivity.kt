@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.provider.Settings
 import android.text.format.Formatter
 import android.widget.Toast
@@ -78,6 +79,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -86,7 +88,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import io.github.draumaz.artlock.data.model.ArtworkSource
 import io.github.draumaz.artlock.data.model.WallpaperContent
-import io.github.draumaz.artlock.notification.MusicNotificationListenerService
 import io.github.draumaz.artlock.ui.AppSelectionScreen
 import io.github.draumaz.artlock.ui.theme.ArtlockTheme
 import io.github.draumaz.artlock.wallpaper.AnimatedWallpaperService
@@ -102,27 +103,25 @@ class MainActivity : ComponentActivity() {
         if (uri != null) {
             lifecycleScope.launch {
                 val savedPath = withContext(Dispatchers.IO) {
+                    val file = File(filesDir, "default_wallpaper_${System.currentTimeMillis()}.jpg")
                     try {
-                        // Cleanup old default wallpapers
-                        filesDir.listFiles { _, name -> name.startsWith("default_wallpaper_") }?.forEach { it.delete() }
-
-                        val inputStream = contentResolver.openInputStream(uri)
-                        val timestamp = System.currentTimeMillis()
-                        val file = File(filesDir, "default_wallpaper_$timestamp.jpg")
-                        val outputStream = FileOutputStream(file)
-                        inputStream?.copyTo(outputStream)
-                        inputStream?.close()
-                        outputStream.close()
+                        val input = contentResolver.openInputStream(uri) ?: return@withContext null
+                        input.use { source -> FileOutputStream(file).use { source.copyTo(it) } }
+                        // Only remove the previous background once the new one is safely copied
+                        filesDir.listFiles { f -> f.name.startsWith("default_wallpaper_") && f != file }?.forEach { it.delete() }
                         file.absolutePath
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        Log.w("MainActivity", "Failed to copy background image", e)
+                        file.delete()
                         null
                     }
                 }
 
                 if (savedPath != null) {
-                    val app = application as App
-                    app.wallpaperStateStore.saveDefaultWallpaper(savedPath)
-                    Toast.makeText(this@MainActivity, getString(R.string.toast_wallpaper_saved), Toast.LENGTH_SHORT).show()
+                    (application as App).wallpaperStateStore.saveDefaultWallpaper(savedPath)
+                    Toast.makeText(this@MainActivity, R.string.toast_wallpaper_saved, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@MainActivity, R.string.toast_wallpaper_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -297,8 +296,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkNotificationAccess(): Boolean {
-        val enabledListeners = Settings.Secure.getString(contentResolver, "enabled_notification_listeners").orEmpty()
-        return enabledListeners.contains(ComponentName(this, MusicNotificationListenerService::class.java).flattenToString())
+        return packageName in NotificationManagerCompat.getEnabledListenerPackages(this)
     }
 }
 
@@ -395,7 +393,7 @@ fun NotificationAccessItem(enabled: Boolean, onClick: () -> Unit) {
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text(stringResource(R.string.btn_notification_access).substringAfter(". "))
+                    Text(stringResource(R.string.btn_notification_access))
                 }
             }
         }
@@ -664,7 +662,7 @@ private fun ActionListItem(
         },
         supportingContent = {
             val summary = action.doneSummary?.takeIf { action.done } ?: action.summary
-            Text(stringResource(summary).substringAfter(". "))
+            Text(stringResource(summary))
         },
         trailingContent = {
             if (action.done) {
@@ -739,10 +737,15 @@ fun SliderItem(
         verticalAlignment = Alignment.Top,
         leadingContent = { LeadingIcon(icon) },
         supportingContent = {
+            val state = remember { SliderState(value = value.toFloat(), trackRange = 0f..100f) }
+            // Follow the saved value (e.g. once it loads from DataStore)
+            LaunchedEffect(value) { state.value = value.toFloat() }
             Slider(
-                value = value.toFloat(),
-                onValueChange = onValueChange,
-                valueRange = 0f..100f
+                state = state,
+                onValueChange = {
+                    state.value = it
+                    onValueChange(it)
+                }
             )
         }
     ) {

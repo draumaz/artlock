@@ -1,7 +1,8 @@
-# Preserve data models from obfuscation to keep Gson/Retrofit working
+# Gson reflects over the iTunes response models, so keep their fields
 -keep class io.github.draumaz.artlock.data.model.** { *; }
 
-# Keep Compose-related classes if necessary (usually handled by Compose compiler)
--keepclassmembers class **.R$* {
-    public static <fields>;
+# Strip debug/verbose logging (track titles etc.) from release builds
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
 }

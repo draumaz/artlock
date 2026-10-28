@@ -1,7 +1,6 @@
 package io.github.draumaz.artlock.ui
 
 import android.content.Intent
-import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,20 +12,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import io.github.draumaz.artlock.R
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class AppInfo(
     val name: String,
     val packageName: String,
-    val icon: Drawable
+    // Converted once while loading, not on every recomposition
+    val icon: ImageBitmap
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +43,8 @@ fun AppSelectionScreen(
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
 
+    val iconSizePx = with(LocalDensity.current) { 40.dp.roundToPx() }
+
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
@@ -51,9 +54,9 @@ fun AppSelectionScreen(
             val appList = resolvedInfos.map { resolved ->
                 val packageName = resolved.activityInfo.packageName
                 val name = resolved.loadLabel(packageManager).toString()
-                val icon = resolved.loadIcon(packageManager)
+                val icon = resolved.loadIcon(packageManager).toBitmap(iconSizePx, iconSizePx).asImageBitmap()
                 AppInfo(name, packageName, icon)
-            }.sortedBy { it.name.lowercase() }
+            }.distinctBy { it.packageName }.sortedBy { it.name.lowercase() }
             
             withContext(Dispatchers.Main) {
                 apps = appList
@@ -73,7 +76,7 @@ fun AppSelectionScreen(
                 title = { Text(stringResource(R.string.app_selection_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.navigate_up))
                     }
                 }
             )
@@ -126,11 +129,10 @@ fun AppItem(
     onSelectedChange: (Boolean) -> Unit
 ) {
     ListItem(
-        headlineContent = { Text(app.name) },
         supportingContent = { Text(app.packageName, style = MaterialTheme.typography.bodySmall) },
         leadingContent = {
             Image(
-                bitmap = app.icon.toBitmap().asImageBitmap(),
+                bitmap = app.icon,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp)
             )
@@ -138,5 +140,7 @@ fun AppItem(
         trailingContent = {
             Switch(checked = isSelected, onCheckedChange = onSelectedChange)
         }
-    )
+    ) {
+        Text(app.name)
+    }
 }

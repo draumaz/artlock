@@ -8,7 +8,6 @@ import io.github.draumaz.artlock.data.repository.ArtworkRepository
 import io.github.draumaz.artlock.data.repository.ArtworkRepositoryImpl
 import kotlinx.coroutines.flow.MutableSharedFlow
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -29,10 +28,8 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
-        okHttpClient = OkHttpClient.Builder().addInterceptor(logging).build()
+        okHttpClient = OkHttpClient()
 
-        // Conexão com o iTunes (Fotos 4K)
         val retrofitItunes = Retrofit.Builder()
             .baseUrl("https://itunes.apple.com/")
             .client(okHttpClient)
@@ -42,7 +39,6 @@ class App : Application() {
 
         wallpaperStateStore = WallpaperStateStore(this)
 
-        // Entregamos a conexão pro nosso Repositório trabalhar!
         artworkRepository = ArtworkRepositoryImpl(itunesApi)
     }
 }

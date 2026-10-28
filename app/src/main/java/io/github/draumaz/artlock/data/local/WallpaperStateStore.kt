@@ -23,7 +23,6 @@ class WallpaperStateStore(
         val TRACK_ALBUM = stringPreferencesKey("track_album")
         val SOURCE_PACKAGE = stringPreferencesKey("source_package")
         val CONTENT_TYPE = stringPreferencesKey("content_type")
-        val ANIMATED_URL = stringPreferencesKey("animated_url")
         val STATIC_IMAGE_PATH = stringPreferencesKey("static_image_path")
         val UPDATED_AT = longPreferencesKey("updated_at")
         val ARTWORK_SOURCE = stringPreferencesKey("artwork_source")
@@ -52,7 +51,6 @@ class WallpaperStateStore(
             sourcePackage = prefs[Keys.SOURCE_PACKAGE].orEmpty().ifBlank { null },
             contentType = runCatching { WallpaperContentType.valueOf(typeName) }
                 .getOrDefault(WallpaperContentType.NONE),
-            animatedUrl = prefs[Keys.ANIMATED_URL].orEmpty().ifBlank { null },
             staticImagePath = prefs[Keys.STATIC_IMAGE_PATH].orEmpty().ifBlank { null },
             artworkSource = prefs[Keys.ARTWORK_SOURCE]?.let { name -> ArtworkSource.entries.find { it.name == name } },
             systemArtworkSize = prefs[Keys.SYSTEM_ARTWORK_SIZE].orEmpty().ifBlank { null },
@@ -87,7 +85,6 @@ class WallpaperStateStore(
             prefs[Keys.TRACK_ALBUM] = content.trackAlbum.orEmpty()
             prefs[Keys.SOURCE_PACKAGE] = content.sourcePackage.orEmpty()
             prefs[Keys.CONTENT_TYPE] = content.contentType.name
-            prefs[Keys.ANIMATED_URL] = content.animatedUrl.orEmpty()
             prefs[Keys.STATIC_IMAGE_PATH] = content.staticImagePath.orEmpty()
             prefs[Keys.UPDATED_AT] = content.updatedAt
             prefs[Keys.ARTWORK_SOURCE] = content.artworkSource?.name.orEmpty()

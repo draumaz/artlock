@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">Artlock</string>
+    <string name="btn_notification_access">Conceder acesso às notificações</string>
+    <string name="btn_choose_default_photo">Definir fundo (para quando nada está tocando)</string>
+    <string name="btn_choose_wallpaper">Definir como papel de parede da tela de bloqueio</string>
+    <string name="btn_select_music_apps">Selecionar apps de música</string>
+    <string name="toast_wallpaper_failed">Não foi possível usar essa imagem</string>
+    <string name="toast_wallpaper_saved">Papel de parede padrão salvo!</string>
+    <string name="live_status_header">A tocar</string>
+    <string name="dimming_section_title">Efeitos</string>
+    <string name="actions_section_title">Ações</string>
+    <string name="permissions_section_title">Permissões</string>
+    <string name="navigate_up">Voltar</string>
+    <string name="app_selection_title">Apps de Música</string>
+    <string name="search_apps_hint">Pesquisar aplicativos&#8230;</string>
+    <string name="no_apps_found">Nenhum aplicativo encontrado</string>
+    <string name="chip_dimming">Escurecimento</string>
+    <string name="chip_blur">Desfoque</string>
+    <string name="chip_background">Fundo</string>
+    <string name="chip_wallpaper">Wallpaper</string>
+    <string name="chip_apps">Apps</string>
+    <string name="wallpaper_hint_title">Nada aparece?</string>
+    <string name="wallpaper_hint_message">Tente reiniciar seus aplicativos de música. Alguns aplicativos precisam ser reiniciados para começar a transmitir informações de mídia.</string>
+    <string name="ok">OK</string>
+    <string name="notification_access_title">Acesso às notificações</string>
+    <string name="notification_access_granted_summary">O Artlock pode ver o que está tocando</string>
+    <string name="notification_access_required_summary">Necessário para detectar a música em reprodução</string>
+    <string name="nothing_playing">Nada tocando</string>
+    <string name="nothing_playing_summary">Toque uma música em um app compatível</string>
+    <string name="step_label">Passo %1$d</string>
+    <string name="wallpaper_set_summary">O Artlock está definido como papel de parede da tela de bloqueio</string>
+    <string name="optional_label">Opcional</string>
+    <string name="artwork_source_system">Local · %1$s</string>
+    <string name="artwork_placeholder">genérica</string>
+    <string name="artwork_none">sem capa</string>
+    <string name="footer_version">%1$s, versão %2$s</string>
+</resources>

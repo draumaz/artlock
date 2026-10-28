@@ -8,6 +8,5 @@ data class TrackInfo(
     val album: String? = null,
     val packageName: String,
     val isPlaying: Boolean = true,
-    val timestamp: Long = System.currentTimeMillis(),
     val staticArtworkBitmap: Bitmap? = null
 )
