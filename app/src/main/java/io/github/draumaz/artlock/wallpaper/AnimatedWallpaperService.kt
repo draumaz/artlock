@@ -148,7 +148,7 @@ class AnimatedWallpaperService : WallpaperService() {
 
         private fun renderContent(content: WallpaperContent) {
             val holder = currentHolder ?: return
-            
+
             when (content.contentType) {
                 WallpaperContentType.ANIMATED -> {
                     transitionJob?.cancel()
@@ -182,7 +182,7 @@ class AnimatedWallpaperService : WallpaperService() {
                         imageRenderer.draw(holder, currentBitmap!!, targetDim, targetBlur)
                         return
                     }
-                    
+
                     transitionJob?.cancel()
                     transitionJob = engineScope.launch {
                         val frame = holder.surfaceFrame
@@ -205,7 +205,7 @@ class AnimatedWallpaperService : WallpaperService() {
                             currentBitmap?.let { imageRenderer.draw(holder, it, currentDimToApply, currentBlurToApply) }
                             return@launch
                         }
-                        
+
                         pendingBitmap = newBitmap
                         if (!prevWasCanvas) playerManager.stopAndClearSurface()
 

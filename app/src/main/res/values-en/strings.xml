@@ -32,4 +32,9 @@
     <string name="wallpaper_hint_title">Nothing showing up?</string>
     <string name="wallpaper_hint_message">Try restarting your music apps. Some apps need to be restarted to start broadcasting media info.</string>
     <string name="ok">OK</string>
+    <string name="notification_access_title">Notification access</string>
+    <string name="notification_access_granted_summary">Artlock can see what\'s playing</string>
+    <string name="notification_access_required_summary">Required to detect what\'s playing</string>
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="nothing_playing_summary">Play a song in a supported app</string>
 </resources>

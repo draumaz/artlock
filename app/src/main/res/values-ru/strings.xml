@@ -32,4 +32,9 @@
     <string name="wallpaper_hint_title">Ничего не отображается?</string>
     <string name="wallpaper_hint_message">Попробуйте перезапустить музыкальные приложения. Некоторым приложениям требуется перезапуск, чтобы начать трансляцию медиаданных.</string>
     <string name="ok">OK</string>
+    <string name="notification_access_title">Доступ к уведомлениям</string>
+    <string name="notification_access_granted_summary">Artlock видит, что сейчас играет</string>
+    <string name="notification_access_required_summary">Нужен, чтобы определять воспроизводимую музыку</string>
+    <string name="nothing_playing">Ничего не играет</string>
+    <string name="nothing_playing_summary">Включите песню в поддерживаемом приложении</string>
 </resources>

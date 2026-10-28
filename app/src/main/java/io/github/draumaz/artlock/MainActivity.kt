@@ -14,15 +14,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,25 +30,34 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
@@ -101,7 +108,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -136,7 +142,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     fun MainScreen(onNavigateToAppSelection: () -> Unit, onPickImage: () -> Unit) {
         val app = application as App
@@ -178,9 +184,14 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
         Scaffold(
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            // Segmented list items use a surface container, so the page sits one tone lower
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
-                TopAppBar(
+                LargeFlexibleTopAppBar(
                     title = { Text(stringResource(R.string.app_name)) },
                     actions = {
                         IconButton(onClick = {
@@ -192,70 +203,62 @@ class MainActivity : ComponentActivity() {
                                 contentDescription = stringResource(R.string.help_description)
                             )
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
+                    scrollBehavior = scrollBehavior
                 )
             }
         ) { innerPadding ->
             Column(
                 modifier = Modifier
-                    .padding(innerPadding)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp)
             ) {
                 SectionHeader(stringResource(R.string.permissions_section_title))
-
-                // Notification Status Card
-                StatusCard(
+                NotificationAccessItem(
                     enabled = isNotificationEnabled,
-                    onActionClick = {
+                    onClick = {
                         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     }
                 )
 
-                // Live Status Section
-                CollapsibleSection(title = stringResource(R.string.live_status_header)) {
-                    LiveStatusCard(wallpaperContent)
-                }
+                SectionHeader(stringResource(R.string.live_status_header))
+                NowPlayingItem(wallpaperContent)
 
-                // Actions Section
-                CollapsibleSection(title = stringResource(R.string.actions_section_title)) {
-                    ActionsCard(
-                        onPickImage = onPickImage,
-                        onSetWallpaper = {
-                            wasWallpaperPickerLaunched = true
-                            val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
-                                putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(this@MainActivity, AnimatedWallpaperService::class.java))
-                            }
-                            startActivity(intent)
-                        },
-                        onNavigateToAppSelection = onNavigateToAppSelection
-                    )
-                }
-
-                // Appearance Section
-                CollapsibleSection(
-                    title = stringResource(R.string.dimming_section_title),
-                    initialExpanded = true
-                ) {
-                    AppearanceCard(
-                        dimLevel = dimLevel,
-                        onDimChange = { newValue ->
-                            lifecycleScope.launch {
-                                app.wallpaperStateStore.saveDimLevel(newValue.toInt())
-                            }
-                        },
-                        blurLevel = blurLevel,
-                        onBlurChange = { newValue ->
-                            lifecycleScope.launch {
-                                app.wallpaperStateStore.saveBlurLevel(newValue.toInt())
-                            }
+                SectionHeader(stringResource(R.string.actions_section_title))
+                ActionsGroup(
+                    onPickImage = onPickImage,
+                    onSetWallpaper = {
+                        wasWallpaperPickerLaunched = true
+                        val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                            putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(this@MainActivity, AnimatedWallpaperService::class.java))
                         }
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(32.dp))
+                        startActivity(intent)
+                    },
+                    onNavigateToAppSelection = onNavigateToAppSelection
+                )
+
+                SectionHeader(stringResource(R.string.dimming_section_title))
+                AppearanceGroup(
+                    dimLevel = dimLevel,
+                    onDimChange = { newValue ->
+                        lifecycleScope.launch {
+                            app.wallpaperStateStore.saveDimLevel(newValue.toInt())
+                        }
+                    },
+                    blurLevel = blurLevel,
+                    onBlurChange = { newValue ->
+                        lifecycleScope.launch {
+                            app.wallpaperStateStore.saveBlurLevel(newValue.toInt())
+                        }
+                    }
+                )
             }
         }
     }
@@ -270,72 +273,94 @@ class MainActivity : ComponentActivity() {
 fun SectionHeader(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 8.dp)
+        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
     )
 }
 
-@Composable
-fun CollapsibleSection(
-    title: String,
-    initialExpanded: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    var expanded by remember { mutableStateOf(initialExpanded) }
+private val OptionPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Icon(
-                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            content()
-        }
+/** Vertically stacked segmented list items, separated by the M3 segmented gap. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun SegmentedGroup(content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        content()
     }
 }
 
 @Composable
-fun StatusCard(enabled: Boolean, onActionClick: () -> Unit) {
-    ElevatedCard(
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
-        )
+fun LeadingIcon(
+    imageVector: ImageVector,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    shape: Shape = CircleShape,
+    size: Dp = 40.dp
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(shape)
+            .background(containerColor),
+        contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Icon(imageVector, contentDescription = null, tint = contentColor, modifier = Modifier.size(24.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun NotificationAccessItem(enabled: Boolean, onClick: () -> Unit) {
+    val title = stringResource(R.string.notification_access_title)
+    if (enabled) {
+        SegmentedListItem(
+            onClick = onClick,
+            shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+            contentPadding = OptionPadding,
+            leadingContent = { LeadingIcon(Icons.Default.NotificationsActive) },
+            supportingContent = { Text(stringResource(R.string.notification_access_granted_summary)) },
+            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
         ) {
-            //Text(
-            //    text = stringResource(if (enabled) R.string.notification_access_allowed else R.string.notification_access_blocked),
-            //    style = MaterialTheme.typography.bodyLarge,
-            //    fontWeight = FontWeight.Bold
-            //)
-            if (!enabled) {
-                Spacer(modifier = Modifier.height(8.dp))
+            Text(title)
+        }
+    } else {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(OptionPadding)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LeadingIcon(
+                        imageVector = Icons.Default.NotificationsOff,
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text(title, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.notification_access_required_summary),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
                 Button(
-                    onClick = onActionClick,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    onClick = onClick,
+                    modifier = Modifier.align(Alignment.End),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
                 ) {
                     Text(stringResource(R.string.btn_notification_access).substringAfter(". "))
                 }
@@ -344,145 +369,163 @@ fun StatusCard(enabled: Boolean, onActionClick: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ActionsCard(
+fun NowPlayingItem(content: WallpaperContent?) {
+    val artwork by produceState<ImageBitmap?>(initialValue = null, content?.staticImagePath) {
+        value = content?.staticImagePath?.let { path -> withContext(Dispatchers.IO) { decodeThumbnail(path) } }
+    }
+    val title = content?.trackTitle
+    val artShape = MaterialShapes.Cookie9Sided.toShape()
+
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+        contentPadding = OptionPadding,
+        leadingContent = {
+            val art = artwork
+            if (title != null && art != null) {
+                Image(
+                    bitmap = art,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(artShape)
+                )
+            } else {
+                LeadingIcon(
+                    imageVector = Icons.Default.MusicNote,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    shape = artShape,
+                    size = 56.dp
+                )
+            }
+        },
+        supportingContent = {
+            Text(
+                if (title != null) content.trackArtist ?: "-"
+                else stringResource(R.string.nothing_playing_summary)
+            )
+        }
+    ) {
+        Text(title ?: stringResource(R.string.nothing_playing))
+    }
+}
+
+private fun decodeThumbnail(path: String, targetPx: Int = 168): ImageBitmap? = try {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    var sample = 1
+    while (bounds.outWidth / (sample * 2) >= targetPx && bounds.outHeight / (sample * 2) >= targetPx) sample *= 2
+    BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
+} catch (_: Exception) {
+    null
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun ActionsGroup(
     onPickImage: () -> Unit,
     onSetWallpaper: () -> Unit,
     onNavigateToAppSelection: () -> Unit
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        FlowRow(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            AssistChip(
-                onClick = onPickImage,
-                label = { Text(stringResource(R.string.chip_background)) },
-                leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp)) }
-            )
-            AssistChip(
-                onClick = onSetWallpaper,
-                label = { Text(stringResource(R.string.chip_wallpaper)) },
-                leadingIcon = { Icon(Icons.Default.Wallpaper, contentDescription = null, modifier = Modifier.size(18.dp)) }
-            )
-            AssistChip(
-                onClick = onNavigateToAppSelection,
-                label = { Text(stringResource(R.string.chip_apps)) },
-                leadingIcon = { Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(18.dp)) }
-            )
+    val actions = listOf(
+        Triple(Icons.Default.Image, R.string.chip_background to R.string.btn_choose_default_photo, onPickImage),
+        Triple(Icons.Default.Wallpaper, R.string.chip_wallpaper to R.string.btn_choose_wallpaper, onSetWallpaper),
+        Triple(Icons.Default.LibraryMusic, R.string.chip_apps to R.string.btn_select_music_apps, onNavigateToAppSelection)
+    )
+    SegmentedGroup {
+        actions.forEachIndexed { index, (icon, labels, onClick) ->
+            SegmentedListItem(
+                onClick = onClick,
+                shapes = ListItemDefaults.segmentedShapes(index = index, count = actions.size),
+                contentPadding = OptionPadding,
+                leadingContent = { LeadingIcon(icon) },
+                supportingContent = { Text(stringResource(labels.second).substringAfter(". ")) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
+            ) {
+                Text(stringResource(labels.first))
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun AppearanceCard(
+fun AppearanceGroup(
     dimLevel: Int,
     onDimChange: (Float) -> Unit,
     blurLevel: Int,
     onBlurChange: (Float) -> Unit
 ) {
-    var selectedOption by remember { mutableIntStateOf(0) } // 0: Dim, 1: Blur
-
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = selectedOption == 0,
-                    onClick = { selectedOption = 0 },
-                    label = { Text(stringResource(R.string.chip_dimming)) }
-                )
-                FilterChip(
-                    selected = selectedOption == 1,
-                    onClick = { selectedOption = 1 },
-                    label = { Text(stringResource(R.string.chip_blur)) }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (selectedOption == 0) {
-                Text(
-                    text = stringResource(R.string.dim_level_label, dimLevel),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Slider(
-                    value = dimLevel.toFloat(),
-                    onValueChange = onDimChange,
-                    valueRange = 0f..100f,
-                    steps = 100
-                )
-            } else {
-                Text(
-                    text = stringResource(R.string.blur_level_label, blurLevel),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Slider(
-                    value = blurLevel.toFloat(),
-                    onValueChange = onBlurChange,
-                    valueRange = 0f..100f,
-                    steps = 100
-                )
-            }
-        }
+    SegmentedGroup {
+        SliderItem(
+            index = 0,
+            count = 2,
+            icon = Icons.Default.Brightness6,
+            title = stringResource(R.string.chip_dimming),
+            value = dimLevel,
+            onValueChange = onDimChange
+        )
+        SliderItem(
+            index = 1,
+            count = 2,
+            icon = Icons.Default.BlurOn,
+            title = stringResource(R.string.chip_blur),
+            value = blurLevel,
+            onValueChange = onBlurChange
+        )
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun LiveStatusCard(content: WallpaperContent?) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            if (content == null) {
-                Text("-", style = MaterialTheme.typography.bodyMedium)
-            } else {
-                StatusItem(stringResource(R.string.track_label, content.trackTitle ?: "-"))
-                StatusItem(stringResource(R.string.artist_label, content.trackArtist ?: "-"))
-                //StatusItem(stringResource(R.string.album_label, content.trackAlbum ?: "-"))
-                //StatusItem(stringResource(R.string.type_label, content.contentType.name))
-                //HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                //StatusItem(stringResource(R.string.animated_url_label, content.animatedUrl ?: "-"))
-                //StatusItem(stringResource(R.string.static_path_label, content.staticImagePath ?: "-"))
-            }
+fun SliderItem(
+    index: Int,
+    count: Int,
+    icon: ImageVector,
+    title: String,
+    value: Int,
+    onValueChange: (Float) -> Unit
+) {
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
+        contentPadding = OptionPadding,
+        verticalAlignment = Alignment.Top,
+        leadingContent = { LeadingIcon(icon) },
+        trailingContent = {
+            Text(
+                stringResource(R.string.percent_value, value),
+                style = MaterialTheme.typography.labelLarge
+            )
+        },
+        supportingContent = {
+            Slider(
+                value = value.toFloat(),
+                onValueChange = onValueChange,
+                valueRange = 0f..100f
+            )
         }
+    ) {
+        Text(title)
     }
-}
-
-@Composable
-fun StatusItem(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.padding(vertical = 2.dp)
-    )
 }
 
 @Preview(showBackground = true)
 @Composable
 fun SettingsPreview() {
     ArtlockTheme {
-        Surface {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                StatusCard(enabled = true, onActionClick = {})
-                CollapsibleSection(title = "Ações") {
-                    ActionsCard(onPickImage = {}, onSetWallpaper = {}, onNavigateToAppSelection = {})
-                }
-                CollapsibleSection(title = "Aparência", initialExpanded = false) {
-                    AppearanceCard(dimLevel = 30, onDimChange = {}, blurLevel = 10, onBlurChange = {})
-                }
-                CollapsibleSection(title = "Status") {
-                    LiveStatusCard(null)
-                }
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                SectionHeader("Permissions")
+                NotificationAccessItem(enabled = false, onClick = {})
+                SectionHeader("Now Playing")
+                NowPlayingItem(null)
+                SectionHeader("Actions")
+                ActionsGroup(onPickImage = {}, onSetWallpaper = {}, onNavigateToAppSelection = {})
+                SectionHeader("Appearance")
+                AppearanceGroup(dimLevel = 30, onDimChange = {}, blurLevel = 10, onBlurChange = {})
             }
         }
     }

@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "io.github.draumaz.artlock"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.draumaz.artlock"
