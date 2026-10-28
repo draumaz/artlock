@@ -41,4 +41,9 @@
     <string name="step_label">Passo %1$d</string>
     <string name="wallpaper_set_summary">O Artlock está definido como papel de parede da tela de bloqueio</string>
     <string name="optional_label">Opcional</string>
+    <string name="artwork_source_system">Local · %1$s</string>
+    <string name="artwork_placeholder">genérica</string>
+    <string name="artwork_none">sem capa</string>
+    <string name="artwork_source_itunes" translatable="false">iTunes API</string>
+    <string name="footer_version">%1$s, versão %2$s</string>
 </resources>

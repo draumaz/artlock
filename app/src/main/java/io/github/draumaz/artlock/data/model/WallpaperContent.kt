@@ -8,5 +8,9 @@ data class WallpaperContent(
     val contentType: WallpaperContentType = WallpaperContentType.NONE,
     val animatedUrl: String? = null,
     val staticImagePath: String? = null,
+    val artworkSource: ArtworkSource? = null,
+    // What the music app itself supplied ("WxH"), recorded even when iTunes artwork is used instead
+    val systemArtworkSize: String? = null,
+    val systemArtworkPlaceholder: Boolean = false,
     val updatedAt: Long = 0L
 )

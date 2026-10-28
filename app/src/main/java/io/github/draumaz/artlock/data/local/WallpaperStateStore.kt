@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import io.github.draumaz.artlock.data.model.ArtworkSource
 import io.github.draumaz.artlock.data.model.WallpaperContent
 import io.github.draumaz.artlock.data.model.WallpaperContentType
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,9 @@ class WallpaperStateStore(
         val ANIMATED_URL = stringPreferencesKey("animated_url")
         val STATIC_IMAGE_PATH = stringPreferencesKey("static_image_path")
         val UPDATED_AT = longPreferencesKey("updated_at")
+        val ARTWORK_SOURCE = stringPreferencesKey("artwork_source")
+        val SYSTEM_ARTWORK_SIZE = stringPreferencesKey("system_artwork_size")
+        val SYSTEM_ARTWORK_PLACEHOLDER = androidx.datastore.preferences.core.booleanPreferencesKey("system_artwork_placeholder")
 
         // CHAVE PARA A FOTO PADRÃO
         val DEFAULT_WALLPAPER_PATH = stringPreferencesKey("default_wallpaper_path")
@@ -50,6 +54,9 @@ class WallpaperStateStore(
                 .getOrDefault(WallpaperContentType.NONE),
             animatedUrl = prefs[Keys.ANIMATED_URL].orEmpty().ifBlank { null },
             staticImagePath = prefs[Keys.STATIC_IMAGE_PATH].orEmpty().ifBlank { null },
+            artworkSource = prefs[Keys.ARTWORK_SOURCE]?.let { name -> ArtworkSource.entries.find { it.name == name } },
+            systemArtworkSize = prefs[Keys.SYSTEM_ARTWORK_SIZE].orEmpty().ifBlank { null },
+            systemArtworkPlaceholder = prefs[Keys.SYSTEM_ARTWORK_PLACEHOLDER] ?: false,
             updatedAt = prefs[Keys.UPDATED_AT] ?: 0L
         )
     }
@@ -83,6 +90,9 @@ class WallpaperStateStore(
             prefs[Keys.ANIMATED_URL] = content.animatedUrl.orEmpty()
             prefs[Keys.STATIC_IMAGE_PATH] = content.staticImagePath.orEmpty()
             prefs[Keys.UPDATED_AT] = content.updatedAt
+            prefs[Keys.ARTWORK_SOURCE] = content.artworkSource?.name.orEmpty()
+            prefs[Keys.SYSTEM_ARTWORK_SIZE] = content.systemArtworkSize.orEmpty()
+            prefs[Keys.SYSTEM_ARTWORK_PLACEHOLDER] = content.systemArtworkPlaceholder
         }
     }
 

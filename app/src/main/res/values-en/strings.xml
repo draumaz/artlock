@@ -40,4 +40,8 @@
     <string name="step_label">Step %1$d</string>
     <string name="wallpaper_set_summary">Artlock is set as your Lock screen wallpaper</string>
     <string name="optional_label">Optional</string>
+    <string name="artwork_source_system">Local · %1$s</string>
+    <string name="artwork_placeholder">placeholder</string>
+    <string name="artwork_none">no art</string>
+    <string name="footer_version">%1$s, version %2$s</string>
 </resources>

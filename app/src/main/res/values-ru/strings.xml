@@ -40,4 +40,8 @@
     <string name="step_label">Шаг %1$d</string>
     <string name="wallpaper_set_summary">Artlock установлен как обои экрана блокировки</string>
     <string name="optional_label">Необязательно</string>
+    <string name="artwork_source_system">Локально · %1$s</string>
+    <string name="artwork_placeholder">заглушка</string>
+    <string name="artwork_none">нет обложки</string>
+    <string name="footer_version">%1$s, версия %2$s</string>
 </resources>

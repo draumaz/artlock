@@ -6,6 +6,7 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import io.github.draumaz.artlock.App
 import io.github.draumaz.artlock.data.local.StaticArtworkStorage
+import io.github.draumaz.artlock.data.model.ArtworkSource
 import io.github.draumaz.artlock.data.model.LookupResult
 import io.github.draumaz.artlock.data.model.WallpaperContent
 import io.github.draumaz.artlock.data.model.WallpaperContentType
@@ -105,11 +106,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
                 val isPlaceholder = systemArtworkIssue == "a placeholder"
                 // A placeholder is treated as no artwork, so the wallpaper shows the default background
                 val fallbackContent = if (isPlaceholder) {
-                    systemContent.copy(contentType = WallpaperContentType.NONE, staticImagePath = null)
+                    systemContent.copy(contentType = WallpaperContentType.NONE, staticImagePath = null, artworkSource = null)
                 } else {
                     systemContent
                 }
-                val finalContent = if (systemBitmap != null && systemArtworkIssue == null) {
+                val resolvedContent = if (systemBitmap != null && systemArtworkIssue == null) {
                     Log.d("MusicNotification", "Using system artwork (${systemBitmap.width}x${systemBitmap.height}) for $trackKey")
                     systemContent
                 } else {
@@ -118,6 +119,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
                     app.liveWallpaperFlow.emit(fallbackContent)
                     resolveRemoteContent(app, trackInfo, staticArtworkStorage) ?: fallbackContent
                 }
+                // Record what the app supplied, for the details shown in the settings screen
+                val finalContent = resolvedContent.copy(
+                    systemArtworkSize = systemBitmap?.let { "${it.width}×${it.height}" },
+                    systemArtworkPlaceholder = isPlaceholder
+                )
 
                 lastArtworkMissing = finalContent.staticImagePath == null
                 lastSavedContent = finalContent
@@ -194,6 +200,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
             contentType = WallpaperContentType.STATIC,
             animatedUrl = null,
             staticImagePath = path,
+            artworkSource = ArtworkSource.ITUNES,
             updatedAt = System.currentTimeMillis()
         )
     }
@@ -202,7 +209,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
         val bitmap = trackInfo.staticArtworkBitmap
         return if (bitmap != null) {
             val path = storage.save(bitmap, trackInfo)
-            WallpaperContent(trackTitle = trackInfo.title, trackArtist = trackInfo.artist, trackAlbum = trackInfo.album, sourcePackage = trackInfo.packageName, contentType = WallpaperContentType.STATIC, animatedUrl = null, staticImagePath = path, updatedAt = System.currentTimeMillis())
+            WallpaperContent(trackTitle = trackInfo.title, trackArtist = trackInfo.artist, trackAlbum = trackInfo.album, sourcePackage = trackInfo.packageName, contentType = WallpaperContentType.STATIC, animatedUrl = null, staticImagePath = path, artworkSource = ArtworkSource.SYSTEM, updatedAt = System.currentTimeMillis())
         } else {
             WallpaperContent(trackTitle = trackInfo.title, trackArtist = trackInfo.artist, trackAlbum = trackInfo.album, sourcePackage = trackInfo.packageName, contentType = WallpaperContentType.NONE, animatedUrl = null, staticImagePath = null, updatedAt = System.currentTimeMillis())
         }

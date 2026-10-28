@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.format.Formatter
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -40,7 +41,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.CheckCircle
@@ -65,7 +65,16 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -75,6 +84,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import io.github.draumaz.artlock.data.model.ArtworkSource
 import io.github.draumaz.artlock.data.model.WallpaperContent
 import io.github.draumaz.artlock.notification.MusicNotificationListenerService
 import io.github.draumaz.artlock.ui.AppSelectionScreen
@@ -173,7 +183,9 @@ class MainActivity : ComponentActivity() {
                     isNotificationEnabled = checkNotificationAccess()
                     isWallpaperActive = checkWallpaperActive()
                     if (wasWallpaperPickerLaunched) {
-                        showWallpaperHint = true
+                        // Only offer troubleshooting if the wallpaper was actually set but nothing is
+                        // being picked up as playing
+                        showWallpaperHint = isWallpaperActive && wallpaperContent?.trackTitle == null
                         wasWallpaperPickerLaunched = false
                     }
                 }
@@ -205,22 +217,16 @@ class MainActivity : ComponentActivity() {
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
                 LargeFlexibleTopAppBar(
-                    title = { Text(stringResource(R.string.app_name)) },
-                    actions = {
-                        IconButton(onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, "https://github.com/draumaz/artlock".toUri())
-                            startActivity(intent)
-                        }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.HelpOutline,
-                                contentDescription = stringResource(R.string.help_description)
-                            )
-                        }
-                    },
+                    title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
+                    // No separate collapsed row, so there's no empty band above the large title;
+                    // the whole header scrolls away instead of collapsing to a small bar
+                    collapsedHeight = 0.dp,
+                    expandedHeight = TopAppBarDefaults.LargeFlexibleAppBarWithoutSubtitleExpandedHeight -
+                        TopAppBarDefaults.LargeAppBarCollapsedHeight,
                     scrollBehavior = scrollBehavior
                 )
             }
@@ -274,6 +280,8 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 )
+
+                VersionFooter()
             }
         }
     }
@@ -345,7 +353,7 @@ fun NotificationAccessItem(enabled: Boolean, onClick: () -> Unit) {
             contentPadding = OptionPadding,
             leadingContent = { LeadingIcon(Icons.Default.NotificationsActive) },
             supportingContent = { Text(stringResource(R.string.notification_access_granted_summary)) },
-            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
+            trailingContent = { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor()) }
         ) {
             Text(title)
         }
@@ -406,6 +414,11 @@ fun NowPlayingItem(content: WallpaperContent?) {
         shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
         contentPadding = OptionPadding,
         leadingContent = { NowPlayingArt(art = artwork.takeIf { title != null }, spinning = title != null) },
+        trailingContent = if (title != null) {
+            { ArtworkDetails(content) }
+        } else {
+            null
+        },
         supportingContent = {
             Text(
                 if (title != null) content.trackArtist ?: "-"
@@ -416,6 +429,97 @@ fun NowPlayingItem(content: WallpaperContent?) {
         Text(title ?: stringResource(R.string.nothing_playing))
     }
 }
+
+private data class ArtworkFileInfo(val width: Int, val height: Int, val bytes: Long)
+
+/** Technical details about the current artwork: dimensions, file size, and where it came from. */
+@Composable
+private fun ArtworkDetails(content: WallpaperContent) {
+    val context = LocalContext.current
+    val fileInfo by produceState<ArtworkFileInfo?>(initialValue = null, content.staticImagePath) {
+        value = content.staticImagePath?.let { path ->
+            withContext(Dispatchers.IO) {
+                val file = File(path)
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(path, bounds)
+                if (file.exists() && bounds.outWidth > 0) ArtworkFileInfo(bounds.outWidth, bounds.outHeight, file.length()) else null
+            }
+        }
+    }
+    val appName = remember(content.sourcePackage) {
+        content.sourcePackage?.let { pkg ->
+            runCatching {
+                context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString()
+            }.getOrDefault(pkg)
+        }
+    } ?: "?"
+    val systemArtwork = when {
+        content.systemArtworkPlaceholder -> stringResource(R.string.artwork_placeholder)
+        content.systemArtworkSize != null -> content.systemArtworkSize
+        else -> stringResource(R.string.artwork_none)
+    }
+
+    // The source actually in use is highlighted; one that was considered but not used is dimmed
+    val neutral = MaterialTheme.colorScheme.onSurfaceVariant
+    val active = MaterialTheme.colorScheme.primary
+    val inactive = neutral.copy(alpha = 0.6f)
+    val lines = buildList {
+        fileInfo?.let { add(DetailLine("${it.width}×${it.height} · ${Formatter.formatShortFileSize(context, it.bytes)}", neutral)) }
+        when (content.artworkSource) {
+            ArtworkSource.SYSTEM -> add(DetailLine(stringResource(R.string.artwork_source_system, appName), active, emphasized = true))
+            ArtworkSource.ITUNES -> {
+                add(DetailLine(stringResource(R.string.artwork_source_itunes), active, emphasized = true))
+                add(DetailLine("$appName: $systemArtwork", inactive))
+            }
+            // No artwork recorded at all; only say the app supplied none if there's genuinely no
+            // image (content saved by older versions has an image but no recorded source)
+            null -> if (content.staticImagePath == null) add(DetailLine("$appName: $systemArtwork", inactive))
+        }
+    }
+    Column(horizontalAlignment = Alignment.End) {
+        lines.forEach { line ->
+            Text(
+                line.text,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (line.emphasized) FontWeight.Bold else null,
+                color = line.color
+            )
+        }
+    }
+}
+
+/** Centered "Artlock, version X" footer; the app name links to the GitHub project. */
+@Composable
+fun VersionFooter() {
+    val context = LocalContext.current
+    val version = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "?"
+    }
+    val appName = stringResource(R.string.app_name)
+    // Split the localized template around the app name so only the name becomes a link
+    val (before, after) = stringResource(R.string.footer_version, "\u0000", version).split("\u0000", limit = 2)
+        .let { it[0] to it.getOrElse(1) { "" } }
+    val linkStyle = TextLinkStyles(
+        style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)
+    )
+    Text(
+        text = buildAnnotatedString {
+            append(before)
+            withLink(LinkAnnotation.Url(GITHUB_URL, linkStyle)) { append(appName) }
+            append(after)
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 32.dp, bottom = 8.dp)
+    )
+}
+
+private const val GITHUB_URL = "https://github.com/draumaz/artlock"
+
+private data class DetailLine(val text: String, val color: Color, val emphasized: Boolean = false)
 
 /**
  * Album art masked by a scalloped cookie shape. While something is playing the scallop slowly
@@ -488,7 +592,7 @@ fun ActionsGroup(
         value = backgroundImagePath?.let { path -> withContext(Dispatchers.IO) { decodeThumbnail(path, targetPx = 360) } }
     }
     val actions = listOf(
-        ActionItem(Icons.Default.Image, R.string.chip_background, R.string.btn_choose_default_photo, step = 1, onPickImage, image = backgroundImage),
+        ActionItem(Icons.Default.Image, R.string.chip_background, R.string.btn_choose_default_photo, step = 1, onPickImage, image = backgroundImage, done = backgroundImagePath != null),
         ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper, done = isWallpaperActive, doneSummary = R.string.wallpaper_set_summary),
         ActionItem(Icons.Default.LibraryMusic, R.string.chip_apps, R.string.btn_select_music_apps, step = null, onNavigateToAppSelection, optional = true)
     )
