@@ -543,12 +543,6 @@ fun SliderItem(
         contentPadding = OptionPadding,
         verticalAlignment = Alignment.Top,
         leadingContent = { LeadingIcon(icon) },
-        trailingContent = {
-            Text(
-                stringResource(R.string.percent_value, value),
-                style = MaterialTheme.typography.labelLarge
-            )
-        },
         supportingContent = {
             Slider(
                 value = value.toFloat(),
@@ -557,7 +551,15 @@ fun SliderItem(
             )
         }
     ) {
-        Text(title)
+        // The value lives in the headline row rather than trailingContent, so its changing width
+        // never resizes the slider below it
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, modifier = Modifier.weight(1f))
+            Text(
+                stringResource(R.string.percent_value, value),
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
     }
 }
 
