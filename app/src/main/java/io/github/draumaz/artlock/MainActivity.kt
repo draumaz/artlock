@@ -15,6 +15,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import android.graphics.BitmapFactory
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +53,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
@@ -376,32 +382,11 @@ fun NowPlayingItem(content: WallpaperContent?) {
         value = content?.staticImagePath?.let { path -> withContext(Dispatchers.IO) { decodeThumbnail(path) } }
     }
     val title = content?.trackTitle
-    val artShape = MaterialShapes.Cookie9Sided.toShape()
 
     SegmentedListItem(
         shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
         contentPadding = OptionPadding,
-        leadingContent = {
-            val art = artwork
-            if (title != null && art != null) {
-                Image(
-                    bitmap = art,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(artShape)
-                )
-            } else {
-                LeadingIcon(
-                    imageVector = Icons.Default.MusicNote,
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    shape = artShape,
-                    size = 56.dp
-                )
-            }
-        },
+        leadingContent = { NowPlayingArt(art = artwork.takeIf { title != null }, spinning = title != null) },
         supportingContent = {
             Text(
                 if (title != null) content.trackArtist ?: "-"
@@ -410,6 +395,54 @@ fun NowPlayingItem(content: WallpaperContent?) {
         }
     ) {
         Text(title ?: stringResource(R.string.nothing_playing))
+    }
+}
+
+/**
+ * Album art masked by a scalloped cookie shape. While something is playing the scallop slowly
+ * turns with the art like a record; the placeholder icon is counter-rotated so it stays upright.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun NowPlayingArt(art: ImageBitmap?, spinning: Boolean, size: Dp = 56.dp) {
+    val shape = MaterialShapes.Cookie9Sided.toShape()
+    val rotation = if (spinning) {
+        val transition = rememberInfiniteTransition(label = "nowPlayingArt")
+        transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(durationMillis = 16_000, easing = LinearEasing)),
+            label = "rotation"
+        )
+    } else {
+        null
+    }
+
+    Box(
+        modifier = Modifier
+            .size(size)
+            .graphicsLayer { rotationZ = rotation?.value ?: 0f }
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.tertiaryContainer),
+        contentAlignment = Alignment.Center
+    ) {
+        if (art != null) {
+            Image(
+                bitmap = art,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Icon(
+                Icons.Default.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier
+                    .graphicsLayer { rotationZ = -(rotation?.value ?: 0f) }
+                    .size(24.dp)
+            )
+        }
     }
 }
 
@@ -431,25 +464,41 @@ fun ActionsGroup(
     onNavigateToAppSelection: () -> Unit
 ) {
     val actions = listOf(
-        Triple(Icons.Default.Image, R.string.chip_background to R.string.btn_choose_default_photo, onPickImage),
-        Triple(Icons.Default.Wallpaper, R.string.chip_wallpaper to R.string.btn_choose_wallpaper, onSetWallpaper),
-        Triple(Icons.Default.LibraryMusic, R.string.chip_apps to R.string.btn_select_music_apps, onNavigateToAppSelection)
+        ActionItem(Icons.Default.Image, R.string.chip_background, R.string.btn_choose_default_photo, step = 1, onPickImage),
+        ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper),
+        ActionItem(Icons.Default.LibraryMusic, R.string.chip_apps, R.string.btn_select_music_apps, step = null, onNavigateToAppSelection)
     )
     SegmentedGroup {
-        actions.forEachIndexed { index, (icon, labels, onClick) ->
+        actions.forEachIndexed { index, action ->
             SegmentedListItem(
-                onClick = onClick,
+                onClick = action.onClick,
                 shapes = ListItemDefaults.segmentedShapes(index = index, count = actions.size),
                 contentPadding = OptionPadding,
-                leadingContent = { LeadingIcon(icon) },
-                supportingContent = { Text(stringResource(labels.second).substringAfter(". ")) },
+                leadingContent = { LeadingIcon(action.icon) },
+                overlineContent = action.step?.let { step ->
+                    {
+                        Text(
+                            stringResource(R.string.step_label, step),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                supportingContent = { Text(stringResource(action.summary).substringAfter(". ")) },
                 trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
             ) {
-                Text(stringResource(labels.first))
+                Text(stringResource(action.title))
             }
         }
     }
 }
+
+private data class ActionItem(
+    val icon: ImageVector,
+    val title: Int,
+    val summary: Int,
+    val step: Int?,
+    val onClick: () -> Unit
+)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

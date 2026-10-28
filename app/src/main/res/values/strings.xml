@@ -38,4 +38,5 @@
     <string name="nothing_playing">Nada tocando</string>
     <string name="nothing_playing_summary">Toque uma música em um app compatível</string>
     <string name="percent_value" translatable="false">%1$d%%</string>
+    <string name="step_label">Passo %1$d</string>
 </resources>

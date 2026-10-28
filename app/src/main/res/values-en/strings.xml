@@ -37,4 +37,5 @@
     <string name="notification_access_required_summary">Required to detect what\'s playing</string>
     <string name="nothing_playing">Nothing playing</string>
     <string name="nothing_playing_summary">Play a song in a supported app</string>
+    <string name="step_label">Step %1$d</string>
 </resources>
