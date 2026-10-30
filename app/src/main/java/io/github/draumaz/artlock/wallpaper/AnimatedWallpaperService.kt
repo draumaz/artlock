@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.merge
@@ -103,8 +104,9 @@ class AnimatedWallpaperService : WallpaperService() {
 
         override fun onVisibilityChanged(visible: Boolean) {
             super.onVisibilityChanged(visible)
-            val content = lastContent ?: return
-            if (visible && content.contentType == WallpaperContentType.STATIC) renderContent(content)
+            // Redraw whatever the content is: a change made while hidden (e.g. a fade-out cut short
+            // because the screen was off) may not have reached the surface yet
+            if (visible) lastContent?.let { renderContent(it) }
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
@@ -190,15 +192,14 @@ class AnimatedWallpaperService : WallpaperService() {
             transitionJob = engineScope.launch {
                 val bitmapToFade = currentBitmap
                 if (bitmapToFade == null) {
-                    holder.lockHardwareCanvas()?.let { canvas ->
-                        canvas.drawColor(Color.BLACK)
-                        holder.unlockCanvasAndPost(canvas)
-                    }
+                    drawBlack(holder)
                     return@launch
                 }
                 val blur = currentBlurToApply
                 val dim = currentDimToApply
                 animate(FADE_OUT_MS) { progress -> imageRenderer.drawFadeOut(holder, bitmapToFade, progress, dim, blur) }
+                // The animation stops early while not visible, so make sure the end state is drawn
+                drawBlack(holder)
                 bitmapToFade.recycle()
                 currentBitmap = null
                 currentPath = null
@@ -207,18 +208,23 @@ class AnimatedWallpaperService : WallpaperService() {
             }
         }
 
+        private fun drawBlack(holder: SurfaceHolder) {
+            holder.lockHardwareCanvas()?.let { canvas ->
+                canvas.drawColor(Color.BLACK)
+                holder.unlockCanvasAndPost(canvas)
+            }
+        }
+
         /** Calls [frame] with progress 0..1 about every 16ms for [durationMs], while visible. */
         private suspend fun animate(durationMs: Long, frame: (Float) -> Unit) {
             val startTime = System.currentTimeMillis()
-            while (currentCoroutineIsActive() && isVisible) {
+            while (currentCoroutineContext().isActive && isVisible) {
                 val progress = ((System.currentTimeMillis() - startTime).toFloat() / durationMs).coerceIn(0f, 1f)
                 frame(progress)
                 if (progress >= 1f) break
                 delay(16)
             }
         }
-
-        private suspend fun currentCoroutineIsActive() = kotlinx.coroutines.currentCoroutineContext().isActive
 
         private fun decodeSampledBitmap(path: String, reqWidth: Int, reqHeight: Int): Bitmap? = try {
             if (!File(path).exists()) {

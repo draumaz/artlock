@@ -41,7 +41,7 @@ data class AppInfo(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppSelectionScreen(
-    selectedPackages: Set<String>,
+    selectedPackages: Set<String>?,
     onPackagesChanged: (Set<String>) -> Unit,
     onBack: () -> Unit
 ) {
@@ -49,7 +49,8 @@ fun AppSelectionScreen(
     val packageManager = context.packageManager
     var apps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(true) }
+    var appsLoaded by remember { mutableStateOf(false) }
+    val isLoading = !appsLoaded || selectedPackages == null
 
     val iconSizePx = with(LocalDensity.current) { 40.dp.roundToPx() }
 
@@ -58,17 +59,17 @@ fun AppSelectionScreen(
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
             val resolvedInfos = packageManager.queryIntentActivities(mainIntent, 0)
-            
+
             val appList = resolvedInfos.map { resolved ->
                 val packageName = resolved.activityInfo.packageName
                 val name = resolved.loadLabel(packageManager).toString()
                 val icon = resolved.loadIcon(packageManager).toBitmap(iconSizePx, iconSizePx).asImageBitmap()
                 AppInfo(name, packageName, icon)
             }.distinctBy { it.packageName }.sortedBy { it.name.lowercase() }
-            
+
             withContext(Dispatchers.Main) {
                 apps = appList
-                isLoading = false
+                appsLoaded = true
             }
         }
     }
@@ -79,11 +80,12 @@ fun AppSelectionScreen(
     }
 
     // Selected apps are grouped at the top; toggling one animates it between the groups
-    val (selectedApps, otherApps) = remember(filteredApps, selectedPackages) {
-        filteredApps.partition { it.packageName in selectedPackages }
+    val selected = selectedPackages.orEmpty()
+    val (selectedApps, otherApps) = remember(filteredApps, selected) {
+        filteredApps.partition { it.packageName in selected }
     }
     val onToggle = { app: AppInfo, isSelected: Boolean ->
-        onPackagesChanged(if (isSelected) selectedPackages + app.packageName else selectedPackages - app.packageName)
+        onPackagesChanged(if (isSelected) selected + app.packageName else selected - app.packageName)
     }
 
     // Same look as the main screen: no app bar, the title scrolls with the content

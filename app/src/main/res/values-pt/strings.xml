@@ -5,8 +5,8 @@
     <string name="btn_choose_wallpaper">Definir como papel de parede da tela de bloqueio</string>
     <string name="btn_select_music_apps">Selecionar apps de música</string>
     <string name="toast_wallpaper_failed">Não foi possível usar essa imagem</string>
-    <string name="toast_wallpaper_saved">Papel de parede padrão salvo!</string>
-    <string name="live_status_header">A tocar</string>
+    <string name="toast_wallpaper_saved">Fundo salvo</string>
+    <string name="live_status_header">Tocando agora</string>
     <string name="dimming_section_title">Efeitos</string>
     <string name="actions_section_title">Ações</string>
     <string name="permissions_section_title">Permissões</string>
@@ -20,7 +20,7 @@
     <string name="chip_dimming">Escurecimento</string>
     <string name="chip_blur">Desfoque</string>
     <string name="chip_background">Fundo</string>
-    <string name="chip_wallpaper">Wallpaper</string>
+    <string name="chip_wallpaper">Papel de parede</string>
     <string name="chip_apps">Apps</string>
     <string name="wallpaper_hint_title">Nada aparece?</string>
     <string name="wallpaper_hint_message">Tente reiniciar seus aplicativos de música. Alguns aplicativos precisam ser reiniciados para começar a transmitir informações de mídia.</string>

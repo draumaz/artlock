@@ -173,8 +173,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
         activePackage = null
         lastProcessedTrackKey = null
         lastSavedContent = null
+        lastArtworkMissing = false
         resolutionJob?.cancel()
-        serviceScope.launch { applyDefaultWallpaper() }
+        // Tracked as the resolution job so a track starting right after cancels it, rather than
+        // the default background being saved over the new track
+        resolutionJob = serviceScope.launch { applyDefaultWallpaper() }
     }
 
     private suspend fun applyDefaultWallpaper() {

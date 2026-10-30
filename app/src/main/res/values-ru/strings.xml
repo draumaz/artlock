@@ -5,8 +5,8 @@
     <string name="btn_choose_wallpaper">Установить как обои экрана блокировки</string>
     <string name="btn_select_music_apps">Выбрать музыкальные приложения</string>
     <string name="toast_wallpaper_failed">Не удалось использовать это изображение</string>
-    <string name="toast_wallpaper_saved">Фото по умолчанию сохранено!</string>
-    <string name="live_status_header">В эфире</string>
+    <string name="toast_wallpaper_saved">Фон сохранён</string>
+    <string name="live_status_header">Сейчас играет</string>
     <string name="dimming_section_title">Эффекты</string>
     <string name="actions_section_title">Действия</string>
     <string name="permissions_section_title">Разрешения</string>

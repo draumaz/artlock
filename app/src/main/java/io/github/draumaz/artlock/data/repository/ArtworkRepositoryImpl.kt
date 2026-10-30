@@ -70,7 +70,7 @@ class ArtworkRepositoryImpl(
             val wantedArtist = artist.lowercase()
             val wantedAlbum = album?.let { cleanText(it).lowercase() }?.ifBlank { null }
             // Apps don't always add the " - Single" suffix; a single's album is usually named after the song
-            val playingFromAlbum = wantedAlbum != null && album?.let(::isSingleOrEp) == false &&
+            val playingFromAlbum = wantedAlbum != null && !isSingleOrEp(album) &&
                 wantedAlbum != title?.let { cleanText(it).lowercase() }
 
             return results

@@ -20,7 +20,6 @@ class NotificationMediaParser(private val context: Context) {
         var artist = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         var album = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty().ifBlank { null }
 
-        // Agora a extração não causa mais crashes de ClassCastException!
         var bitmap = extractBitmapFromExtras(extras)
 
         var isPlaying = false
@@ -55,7 +54,7 @@ class NotificationMediaParser(private val context: Context) {
                 }
             }
         } catch (_: Exception) {
-            // Ignoramos silenciosamente se o MediaController falhar
+            // The session may be gone already; fall back to the notification's own fields
         }
 
         if (title.isBlank() || artist.isBlank()) return null
@@ -73,14 +72,11 @@ class NotificationMediaParser(private val context: Context) {
     @Suppress("DEPRECATION")
     private fun extractBitmapFromExtras(extras: Bundle): Bitmap? {
         return try {
-            // Lemos o objeto como algo genérico, sem forçar que seja um Bitmap
+            // Read untyped: apps may put an Icon here instead of a Bitmap
             val obj = extras.get(Notification.EXTRA_LARGE_ICON_BIG) ?: extras.get(Notification.EXTRA_LARGE_ICON)
 
-            // Verificamos o tipo com segurança
-            when (obj) {
-                is Bitmap -> obj
-                else -> null // Se for Icon ou null, retornamos null e o MediaMetadata assume o trabalho
-            }
+            // An Icon is skipped; the media session's metadata usually has the artwork anyway
+            obj as? Bitmap
         } catch (_: Exception) {
             null
         }

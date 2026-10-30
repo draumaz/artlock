@@ -1,14 +1,17 @@
 package io.github.draumaz.artlock.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.draumaz.artlock.data.model.ArtworkSource
 import io.github.draumaz.artlock.data.model.WallpaperContent
 import io.github.draumaz.artlock.data.model.WallpaperContentType
+import io.github.draumaz.artlock.notification.SupportedMusicApps
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -27,20 +30,19 @@ class WallpaperStateStore(
         val UPDATED_AT = longPreferencesKey("updated_at")
         val ARTWORK_SOURCE = stringPreferencesKey("artwork_source")
         val SYSTEM_ARTWORK_SIZE = stringPreferencesKey("system_artwork_size")
-        val SYSTEM_ARTWORK_PLACEHOLDER = androidx.datastore.preferences.core.booleanPreferencesKey("system_artwork_placeholder")
+        val SYSTEM_ARTWORK_PLACEHOLDER = booleanPreferencesKey("system_artwork_placeholder")
 
-        // CHAVE PARA A FOTO PADRÃO
+        // The user's own background, shown when nothing is playing
         val DEFAULT_WALLPAPER_PATH = stringPreferencesKey("default_wallpaper_path")
 
-        // CHAVE NOVA PARA O NÍVEL DE ESCURECIMENTO (0 a 100)
+        // Effect levels for album art, 0-100
         val DIM_LEVEL = intPreferencesKey("dim_level")
 
-        // CHAVE PARA O NÍVEL DE BLUR (0 a 100)
         val BLUR_LEVEL = intPreferencesKey("blur_level")
 
-        val ONLINE_LOOKUP_ENABLED = androidx.datastore.preferences.core.booleanPreferencesKey("online_lookup_enabled")
+        val ONLINE_LOOKUP_ENABLED = booleanPreferencesKey("online_lookup_enabled")
 
-        val SUPPORTED_PACKAGES = androidx.datastore.preferences.core.stringSetPreferencesKey("supported_packages")
+        val SUPPORTED_PACKAGES = stringSetPreferencesKey("supported_packages")
     }
 
     val contentFlow: Flow<WallpaperContent> = context.dataStore.data.map { prefs ->
@@ -61,23 +63,20 @@ class WallpaperStateStore(
         )
     }
 
-    // Fluxo separado só para ler a foto padrão
     val defaultWallpaperFlow: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[Keys.DEFAULT_WALLPAPER_PATH]
     }
 
-    // Fluxo novo para ler o nível de escurecimento (Padrão: 30%)
     val dimLevelFlow: Flow<Int> = context.dataStore.data.map { prefs ->
         prefs[Keys.DIM_LEVEL] ?: 30
     }
 
-    // Fluxo novo para ler o nível de blur (Padrão: 0%)
     val blurLevelFlow: Flow<Int> = context.dataStore.data.map { prefs ->
         prefs[Keys.BLUR_LEVEL] ?: 0
     }
 
     val supportedPackagesFlow: Flow<Set<String>> = context.dataStore.data.map { prefs ->
-        prefs[Keys.SUPPORTED_PACKAGES] ?: io.github.draumaz.artlock.notification.SupportedMusicApps.packages
+        prefs[Keys.SUPPORTED_PACKAGES] ?: SupportedMusicApps.packages
     }
 
     /** Whether artwork may be fetched from the iTunes API when the music app's own is missing or low-res. */
@@ -100,15 +99,13 @@ class WallpaperStateStore(
         }
     }
 
-    // Função para salvar a foto que você escolher na galeria
+    /** Saves the user's background, and shows it right away if nothing is playing. */
     suspend fun saveDefaultWallpaper(path: String) {
         context.dataStore.edit { prefs ->
             prefs[Keys.DEFAULT_WALLPAPER_PATH] = path
-            
-            // Se não houver nada tocando (ou se já estivermos no modo estático sem track), atualizamos o estado atual
+
             val currentType = prefs[Keys.CONTENT_TYPE] ?: WallpaperContentType.NONE.name
             val currentTrack = prefs[Keys.TRACK_TITLE]
-            
             if (currentType == WallpaperContentType.NONE.name || (currentType == WallpaperContentType.STATIC.name && currentTrack.isNullOrBlank())) {
                 prefs[Keys.CONTENT_TYPE] = WallpaperContentType.STATIC.name
                 prefs[Keys.STATIC_IMAGE_PATH] = path
@@ -119,14 +116,12 @@ class WallpaperStateStore(
         }
     }
 
-    // Função nova para salvar o nível de escurecimento do Slider
     suspend fun saveDimLevel(level: Int) {
         context.dataStore.edit { prefs ->
             prefs[Keys.DIM_LEVEL] = level
         }
     }
 
-    // Função nova para salvar o nível de blur do Slider
     suspend fun saveBlurLevel(level: Int) {
         context.dataStore.edit { prefs ->
             prefs[Keys.BLUR_LEVEL] = level
