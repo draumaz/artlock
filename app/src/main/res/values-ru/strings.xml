@@ -34,4 +34,12 @@
     <string name="artwork_placeholder">заглушка</string>
     <string name="artwork_none">нет обложки</string>
     <string name="footer_version">%1$s, версия %2$s</string>
+    <string name="artwork_section_title">Обложки</string>
+    <string name="online_lookup_title">Поиск обложек в сети</string>
+    <string name="online_lookup_enabled_summary">Загружать обложки высокого разрешения из iTunes, если у музыкального приложения их нет или они низкого качества</string>
+    <string name="online_lookup_disabled_summary">Используются только обложки из музыкального приложения</string>
+    <string name="online_lookup_warning_title">Отключить поиск в сети?</string>
+    <string name="online_lookup_warning_message">Artlock будет использовать только обложки, которые предоставляет музыкальное приложение. Многие приложения передают маленькие изображения низкого разрешения, поэтому обои могут выглядеть размытыми или пикселизированными, а для треков без обложки будет показан ваш фон.</string>
+    <string name="online_lookup_warning_confirm">Отключить</string>
+    <string name="cancel">Отмена</string>
 </resources>

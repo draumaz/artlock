@@ -44,6 +44,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
     private var lastArtworkMissing = false
 
     private var supportedPackages: Set<String> = SupportedMusicApps.packages
+    private var onlineLookupEnabled = true
 
     companion object {
         private const val TAG = "MusicNotification"
@@ -67,6 +68,9 @@ class MusicNotificationListenerService : NotificationListenerService() {
         super.onCreate()
         serviceScope.launch {
             app.wallpaperStateStore.supportedPackagesFlow.collect { supportedPackages = it }
+        }
+        serviceScope.launch {
+            app.wallpaperStateStore.onlineLookupEnabledFlow.collect { onlineLookupEnabled = it }
         }
     }
 
@@ -139,6 +143,9 @@ class MusicNotificationListenerService : NotificationListenerService() {
         val resolvedContent = if (systemArtworkIssue == null && systemContent.staticImagePath != null) {
             Log.d(TAG, "Using system artwork (${systemBitmap?.width}x${systemBitmap?.height}) for $trackKey")
             systemContent
+        } else if (!onlineLookupEnabled) {
+            Log.d(TAG, "System artwork is $systemArtworkIssue for $trackKey, online lookup disabled")
+            fallbackContent
         } else {
             // Missing, low-res or placeholder system artwork: show what we have now, then try iTunes
             Log.d(TAG, "System artwork is $systemArtworkIssue for $trackKey, querying iTunes")

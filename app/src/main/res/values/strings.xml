@@ -34,6 +34,14 @@
     <string name="artwork_placeholder">placeholder</string>
     <string name="artwork_none">no art</string>
     <string name="footer_version">%1$s, version %2$s</string>
+    <string name="artwork_section_title">Artwork</string>
+    <string name="online_lookup_title">Online artwork lookup</string>
+    <string name="online_lookup_enabled_summary">Fetch high-res artwork from iTunes when the music app\'s is missing or low quality</string>
+    <string name="online_lookup_disabled_summary">Only using artwork supplied by the music app</string>
+    <string name="online_lookup_warning_title">Disable online lookup?</string>
+    <string name="online_lookup_warning_message">Artlock will only use the artwork your music app provides. Many apps supply small or low-resolution images, so the wallpaper may look blurry or pixelated, and tracks without artwork will show your background instead.</string>
+    <string name="online_lookup_warning_confirm">Disable</string>
+    <string name="cancel">Cancel</string>
 
     <string name="percent_value" translatable="false">%1$d%%</string>
     <string name="artwork_source_itunes" translatable="false">iTunes API</string>

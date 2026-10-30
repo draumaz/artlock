@@ -38,6 +38,8 @@ class WallpaperStateStore(
         // CHAVE PARA O NÍVEL DE BLUR (0 a 100)
         val BLUR_LEVEL = intPreferencesKey("blur_level")
 
+        val ONLINE_LOOKUP_ENABLED = androidx.datastore.preferences.core.booleanPreferencesKey("online_lookup_enabled")
+
         val SUPPORTED_PACKAGES = androidx.datastore.preferences.core.stringSetPreferencesKey("supported_packages")
     }
 
@@ -76,6 +78,11 @@ class WallpaperStateStore(
 
     val supportedPackagesFlow: Flow<Set<String>> = context.dataStore.data.map { prefs ->
         prefs[Keys.SUPPORTED_PACKAGES] ?: io.github.draumaz.artlock.notification.SupportedMusicApps.packages
+    }
+
+    /** Whether artwork may be fetched from the iTunes API when the music app's own is missing or low-res. */
+    val onlineLookupEnabledFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.ONLINE_LOOKUP_ENABLED] ?: true
     }
 
     suspend fun save(content: WallpaperContent) {
@@ -129,6 +136,12 @@ class WallpaperStateStore(
     suspend fun saveSupportedPackages(packages: Set<String>) {
         context.dataStore.edit { prefs ->
             prefs[Keys.SUPPORTED_PACKAGES] = packages
+        }
+    }
+
+    suspend fun saveOnlineLookupEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.ONLINE_LOOKUP_ENABLED] = enabled
         }
     }
 }

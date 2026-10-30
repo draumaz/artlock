@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -174,6 +175,7 @@ class MainActivity : ComponentActivity() {
         val dimLevel by app.wallpaperStateStore.dimLevelFlow.collectAsStateWithLifecycle(initialValue = 30)
         val blurLevel by app.wallpaperStateStore.blurLevelFlow.collectAsStateWithLifecycle(initialValue = 0)
         val defaultWallpaperPath by app.wallpaperStateStore.defaultWallpaperFlow.collectAsStateWithLifecycle(initialValue = null)
+        val onlineLookupEnabled by app.wallpaperStateStore.onlineLookupEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
 
         val lifecycleOwner = LocalLifecycleOwner.current
         DisposableEffect(lifecycleOwner) {
@@ -262,6 +264,16 @@ class MainActivity : ComponentActivity() {
                         startActivity(intent)
                     },
                     onNavigateToAppSelection = onNavigateToAppSelection
+                )
+
+                SectionHeader(stringResource(R.string.artwork_section_title))
+                OnlineLookupItem(
+                    enabled = onlineLookupEnabled,
+                    onEnabledChange = { enabled ->
+                        lifecycleScope.launch {
+                            app.wallpaperStateStore.saveOnlineLookupEnabled(enabled)
+                        }
+                    }
                 )
 
                 SectionHeader(stringResource(R.string.dimming_section_title))
@@ -693,6 +705,48 @@ private data class ActionItem(
 private fun successColor(): Color =
     if (isSystemInDarkTheme()) Color(0xFF6DD58C) else Color(0xFF146C2E)
 
+/** Toggle for fetching artwork from the iTunes API; turning it off asks for confirmation first. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun OnlineLookupItem(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
+    var showDisableWarning by remember { mutableStateOf(false) }
+
+    if (showDisableWarning) {
+        AlertDialog(
+            onDismissRequest = { showDisableWarning = false },
+            title = { Text(stringResource(R.string.online_lookup_warning_title)) },
+            text = { Text(stringResource(R.string.online_lookup_warning_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDisableWarning = false
+                    onEnabledChange(false)
+                }) {
+                    Text(stringResource(R.string.online_lookup_warning_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisableWarning = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    val onToggle = { if (enabled) showDisableWarning = true else onEnabledChange(true) }
+    SegmentedListItem(
+        onClick = onToggle,
+        shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+        contentPadding = OptionPadding,
+        leadingContent = { LeadingIcon(Icons.Default.Public) },
+        supportingContent = {
+            Text(stringResource(if (enabled) R.string.online_lookup_enabled_summary else R.string.online_lookup_disabled_summary))
+        },
+        trailingContent = { Switch(checked = enabled, onCheckedChange = { onToggle() }) }
+    ) {
+        Text(stringResource(R.string.online_lookup_title))
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppearanceGroup(
@@ -773,6 +827,8 @@ fun SettingsPreview() {
                 NowPlayingItem(null)
                 SectionHeader("Actions")
                 ActionsGroup(backgroundImagePath = null, isWallpaperActive = true, onPickImage = {}, onSetWallpaper = {}, onNavigateToAppSelection = {})
+                SectionHeader("Artwork")
+                OnlineLookupItem(enabled = true, onEnabledChange = {})
                 SectionHeader("Effects")
                 AppearanceGroup(dimLevel = 30, onDimChange = {}, blurLevel = 10, onBlurChange = {})
             }
