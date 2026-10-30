@@ -65,7 +65,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -210,27 +209,9 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
         Scaffold(
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             // Segmented list items use a surface container, so the page sits one tone lower
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            topBar = {
-                LargeFlexibleTopAppBar(
-                    title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    // No separate collapsed row, so there's no empty band above the large title;
-                    // the whole header scrolls away instead of collapsing to a small bar
-                    collapsedHeight = 0.dp,
-                    expandedHeight = TopAppBarDefaults.LargeFlexibleAppBarWithoutSubtitleExpandedHeight -
-                        TopAppBarDefaults.LargeAppBarCollapsedHeight,
-                    scrollBehavior = scrollBehavior
-                )
-            }
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) { innerPadding ->
             Column(
                 modifier = Modifier
@@ -240,6 +221,14 @@ class MainActivity : ComponentActivity() {
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp)
             ) {
+                // The title scrolls with the content rather than sitting in an app bar, so there's
+                // no header area for the list to be clipped against
+                Text(
+                    stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 4.dp, top = 24.dp, bottom = 8.dp)
+                )
                 SectionHeader(stringResource(R.string.permissions_section_title))
                 NotificationAccessItem(
                     enabled = isNotificationEnabled,
