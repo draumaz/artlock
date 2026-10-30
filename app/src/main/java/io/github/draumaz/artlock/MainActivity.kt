@@ -57,6 +57,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
@@ -67,6 +69,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.LinkAnnotation
@@ -243,7 +246,11 @@ class MainActivity : ComponentActivity() {
                 SectionHeader(stringResource(R.string.actions_section_title))
                 ActionsGroup(
                     backgroundImagePath = defaultWallpaperPath,
+                    // What the wallpaper is showing: the playing track's art, else the background
+                    wallpaperImagePath = wallpaperContent?.staticImagePath ?: defaultWallpaperPath,
                     isWallpaperActive = isWallpaperActive,
+                    blurLevel = blurLevel,
+                    dimLevel = dimLevel,
                     onPickImage = onPickImage,
                     onSetWallpaper = {
                         wasWallpaperPickerLaunched = true
@@ -487,36 +494,67 @@ private fun ArtworkDetails(content: WallpaperContent) {
     }
 }
 
-/** Centered "Artlock, version X" footer; the app name links to the GitHub project. */
+/**
+ * Centered "Artlock, version X" footer with a credits line below. The app name links to the GitHub
+ * project and each author's name to their GitHub profile.
+ */
 @Composable
 fun VersionFooter() {
     val context = LocalContext.current
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "?"
     }
-    val appName = stringResource(R.string.app_name)
-    // Split the localized template around the app name so only the name becomes a link
-    val (before, after) = stringResource(R.string.footer_version, "\u0000", version).split("\u0000", limit = 2)
-        .let { it[0] to it.getOrElse(1) { "" } }
     val linkStyle = TextLinkStyles(
         style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)
     )
-    Text(
-        text = buildAnnotatedString {
-            append(before)
-            withLink(LinkAnnotation.Url(GITHUB_URL, linkStyle)) { append(appName) }
-            append(after)
-        },
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 32.dp, bottom = 8.dp)
+    ) {
+        FooterText(
+            R.string.footer_version,
+            listOf(stringResource(R.string.app_name) to GITHUB_URL),
+            linkStyle,
+            version
+        )
+        FooterText(
+            R.string.footer_credits,
+            listOf(ORIGINAL_AUTHOR to "https://github.com/$ORIGINAL_AUTHOR", FORK_AUTHOR to "https://github.com/$FORK_AUTHOR"),
+            linkStyle
+        )
+    }
+}
+
+/**
+ * A localized footer line whose first placeholders are filled with links. Each link is formatted in
+ * as a marker and the template split around it, so only the linked words become links.
+ */
+@Composable
+private fun FooterText(template: Int, links: List<Pair<String, String>>, linkStyle: TextLinkStyles, vararg extraArgs: Any) {
+    val markers = links.indices.map { "\u0000$it\u0000" }
+    val formatted = stringResource(template, *(markers + extraArgs).toTypedArray())
+    Text(
+        text = buildAnnotatedString {
+            var rest = formatted
+            links.forEachIndexed { index, (label, url) ->
+                val parts = rest.split(markers[index], limit = 2)
+                append(parts[0])
+                withLink(LinkAnnotation.Url(url, linkStyle)) { append(label) }
+                rest = parts.getOrElse(1) { "" }
+            }
+            append(rest)
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
     )
 }
 
 private const val GITHUB_URL = "https://github.com/draumaz/artlock"
+private const val ORIGINAL_AUTHOR = "lviniciuss-maker"
+private const val FORK_AUTHOR = "draumaz"
 
 private data class DetailLine(val text: String, val color: Color, val emphasized: Boolean = false)
 
@@ -582,7 +620,10 @@ private fun decodeThumbnail(path: String, targetPx: Int = 168): ImageBitmap? = t
 @Composable
 fun ActionsGroup(
     backgroundImagePath: String?,
+    wallpaperImagePath: String?,
     isWallpaperActive: Boolean,
+    blurLevel: Int,
+    dimLevel: Int,
     onPickImage: () -> Unit,
     onSetWallpaper: () -> Unit,
     onNavigateToAppSelection: () -> Unit
@@ -590,9 +631,12 @@ fun ActionsGroup(
     val backgroundImage by produceState<ImageBitmap?>(initialValue = null, backgroundImagePath) {
         value = backgroundImagePath?.let { path -> withContext(Dispatchers.IO) { decodeThumbnail(path, targetPx = 360) } }
     }
+    val wallpaperImage by produceState<ImageBitmap?>(initialValue = null, wallpaperImagePath) {
+        value = wallpaperImagePath?.let { path -> withContext(Dispatchers.IO) { decodeThumbnail(path, targetPx = 360) } }
+    }
     val actions = listOf(
         ActionItem(Icons.Default.Image, R.string.chip_background, R.string.btn_choose_default_photo, step = 1, onPickImage, image = backgroundImage, done = backgroundImagePath != null),
-        ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper, done = isWallpaperActive, doneSummary = R.string.wallpaper_set_summary),
+        ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper, image = wallpaperImage, imageShowsEffects = true, done = isWallpaperActive, doneSummary = R.string.wallpaper_set_summary),
         ActionItem(Icons.Default.LibraryMusic, R.string.chip_apps, R.string.btn_select_music_apps, step = null, onNavigateToAppSelection, optional = true)
     )
     SegmentedGroup {
@@ -603,12 +647,30 @@ fun ActionsGroup(
                 // Show the chosen image behind the row, under a scrim that keeps the text legible.
                 // The shape is held constant so the image's clip always matches the row.
                 Box(modifier = Modifier.clip(shapes.shape)) {
+                    // The wallpaper preview gets the same blur and dimming as the wallpaper. The
+                    // row is about screen-width, so the wallpaper's px radius carries over as-is.
+                    val blurRadius = with(LocalDensity.current) { (blurLevel * 2.5f).toDp() }
                     Image(
                         bitmap = image,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.matchParentSize()
+                        modifier = Modifier
+                            .matchParentSize()
+                            .then(
+                                if (action.imageShowsEffects && blurLevel > 0) {
+                                    Modifier.blur(blurRadius, BlurredEdgeTreatment.Unbounded)
+                                } else {
+                                    Modifier
+                                }
+                            )
                     )
+                    if (action.imageShowsEffects && dimLevel > 0) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.Black.copy(alpha = dimLevel.coerceIn(0, 100) / 100f))
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .matchParentSize()
@@ -684,6 +746,7 @@ private data class ActionItem(
     val step: Int?,
     val onClick: () -> Unit,
     val image: ImageBitmap? = null,
+    val imageShowsEffects: Boolean = false,
     val done: Boolean = false,
     val doneSummary: Int? = null,
     val optional: Boolean = false
@@ -815,7 +878,7 @@ fun SettingsPreview() {
                 SectionHeader("Now Playing")
                 NowPlayingItem(null)
                 SectionHeader("Actions")
-                ActionsGroup(backgroundImagePath = null, isWallpaperActive = true, onPickImage = {}, onSetWallpaper = {}, onNavigateToAppSelection = {})
+                ActionsGroup(backgroundImagePath = null, wallpaperImagePath = null, isWallpaperActive = true, blurLevel = 10, dimLevel = 30, onPickImage = {}, onSetWallpaper = {}, onNavigateToAppSelection = {})
                 SectionHeader("Artwork")
                 OnlineLookupItem(enabled = true, onEnabledChange = {})
                 SectionHeader("Effects")

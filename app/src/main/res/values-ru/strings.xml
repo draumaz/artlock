@@ -34,6 +34,7 @@
     <string name="artwork_placeholder">заглушка</string>
     <string name="artwork_none">нет обложки</string>
     <string name="footer_version">%1$s, версия %2$s</string>
+    <string name="footer_credits">Автор: %1$s · Форк: %2$s</string>
     <string name="artwork_section_title">Обложки</string>
     <string name="online_lookup_title">Поиск обложек в сети</string>
     <string name="online_lookup_enabled_summary">Загружать обложки высокого разрешения из iTunes, если у музыкального приложения их нет или они низкого качества</string>

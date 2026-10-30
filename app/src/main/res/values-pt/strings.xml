@@ -34,6 +34,7 @@
     <string name="artwork_placeholder">genérica</string>
     <string name="artwork_none">sem capa</string>
     <string name="footer_version">%1$s, versão %2$s</string>
+    <string name="footer_credits">Criado por %1$s · Fork por %2$s</string>
     <string name="artwork_section_title">Capa</string>
     <string name="online_lookup_title">Busca de capas online</string>
     <string name="online_lookup_enabled_summary">Buscar capas em alta resolução no iTunes quando a do app de música estiver ausente ou com baixa qualidade</string>

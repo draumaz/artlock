@@ -34,6 +34,7 @@
     <string name="artwork_placeholder">placeholder</string>
     <string name="artwork_none">no art</string>
     <string name="footer_version">%1$s, version %2$s</string>
+    <string name="footer_credits">Originally by %1$s · Fork by %2$s</string>
     <string name="artwork_section_title">Artwork</string>
     <string name="online_lookup_title">Online artwork lookup</string>
     <string name="online_lookup_enabled_summary">Fetch high-res artwork from iTunes when the music app\'s is missing or low quality</string>
