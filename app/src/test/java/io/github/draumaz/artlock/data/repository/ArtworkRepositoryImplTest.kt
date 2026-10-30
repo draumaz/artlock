@@ -53,6 +53,43 @@ class ArtworkRepositoryImplTest {
     }
 
     @Test
+    fun pickBestMatch_prefersPlayingAlbumOverSingle() {
+        val results = listOf(
+            ItunesTrack("daine", "eighteen", "single", collectionName = "eighteen - Single"),
+            ItunesTrack("daine", "eighteen", "album", collectionName = "quarter life crisis")
+        )
+        assertEquals("album", pickBestMatch(results, "daine", "quarter life crisis", "eighteen")?.artworkUrl100)
+    }
+
+    @Test
+    fun pickBestMatch_prefersAlbumReleaseWhenAlbumNameDiffers() {
+        val results = listOf(
+            ItunesTrack("daine", "eighteen", "single", collectionName = "eighteen - Single"),
+            ItunesTrack("daine", "eighteen", "album", collectionName = "quarter life crisis (Deluxe)")
+        )
+        assertEquals("album", pickBestMatch(results, "daine", "quarter life crisis", "eighteen")?.artworkUrl100)
+    }
+
+    @Test
+    fun pickBestMatch_keepsSingleWhenPlayingTheSingle() {
+        val results = listOf(
+            ItunesTrack("daine", "eighteen", "album", collectionName = "quarter life crisis"),
+            ItunesTrack("daine", "eighteen", "single", collectionName = "eighteen - Single")
+        )
+        assertEquals("single", pickBestMatch(results, "daine", "eighteen", "eighteen")?.artworkUrl100)
+        assertEquals("single", pickBestMatch(results, "daine", "eighteen - Single", "eighteen")?.artworkUrl100)
+    }
+
+    @Test
+    fun pickBestMatch_artistOutranksAlbum() {
+        val results = listOf(
+            ItunesTrack("Someone Else", "x", "wrong", collectionName = "Greatest Hits"),
+            ItunesTrack("daine", "x", "right", collectionName = "x - Single")
+        )
+        assertEquals("right", pickBestMatch(results, "daine", "Greatest Hits", "x")?.artworkUrl100)
+    }
+
+    @Test
     fun pickBestMatch_returnsNullWithoutArtwork() {
         assertNull(pickBestMatch(emptyList(), "daine"))
         assertNull(pickBestMatch(listOf(ItunesTrack("daine", "x", null)), "daine"))

@@ -10,7 +10,7 @@ interface ItunesApi {
     suspend fun searchTrack(
         @Query("term") term: String,
         @Query("entity") entity: String = "song",
-        // A few candidates, so the result by the right artist can be picked
-        @Query("limit") limit: Int = 5
+        // Enough candidates that the album version is usually present alongside the single
+        @Query("limit") limit: Int = 15
     ): Response<ItunesSearchResponse>
 }

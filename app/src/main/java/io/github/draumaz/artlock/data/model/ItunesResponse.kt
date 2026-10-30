@@ -4,5 +4,7 @@ data class ItunesSearchResponse(val results: List<ItunesTrack>)
 data class ItunesTrack(
     val artistName: String?,
     val trackName: String?,
-    val artworkUrl100: String?
+    val artworkUrl100: String?,
+    // Album the result belongs to; singles and EPs are suffixed " - Single" / " - EP"
+    val collectionName: String? = null
 )
