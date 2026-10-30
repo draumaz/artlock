@@ -14,6 +14,9 @@
     <string name="app_selection_title">Музыкальные приложения</string>
     <string name="search_apps_hint">Поиск приложений…</string>
     <string name="no_apps_found">Приложения не найдены</string>
+    <string name="app_section_selected">Выбранные</string>
+    <string name="app_section_other">Все приложения</string>
+    <string name="clear_search">Очистить поиск</string>
     <string name="chip_dimming">Затемнение</string>
     <string name="chip_blur">Размытие</string>
     <string name="chip_background">Фон</string>

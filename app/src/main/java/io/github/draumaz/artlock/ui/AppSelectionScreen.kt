@@ -4,22 +4,30 @@ import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import io.github.draumaz.artlock.R
+import io.github.draumaz.artlock.SectionHeader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -30,7 +38,7 @@ data class AppInfo(
     val icon: ImageBitmap
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppSelectionScreen(
     selectedPackages: Set<String>,
@@ -70,65 +78,133 @@ fun AppSelectionScreen(
         else apps.filter { it.name.contains(searchQuery, ignoreCase = true) || it.packageName.contains(searchQuery, ignoreCase = true) }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_selection_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
+    // Selected apps are grouped at the top; toggling one animates it between the groups
+    val (selectedApps, otherApps) = remember(filteredApps, selectedPackages) {
+        filteredApps.partition { it.packageName in selectedPackages }
+    }
+    val onToggle = { app: AppInfo, isSelected: Boolean ->
+        onPackagesChanged(if (isSelected) selectedPackages + app.packageName else selectedPackages - app.packageName)
+    }
+
+    // Same look as the main screen: no app bar, the title scrolls with the content
+    Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = innerPadding.calculateTopPadding() + 8.dp,
+                bottom = innerPadding.calculateBottomPadding() + 24.dp
+            )
+        ) {
+            item(key = "header") {
+                Column {
+                    FilledTonalIconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.navigate_up))
                     }
+                    Text(
+                        stringResource(R.string.app_selection_title),
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 16.dp)
+                    )
+                    SearchField(query = searchQuery, onQueryChange = { searchQuery = it })
                 }
-            )
-        }
-    ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text(stringResource(R.string.search_apps_hint)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true
-            )
+            }
 
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (filteredApps.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.no_apps_found))
-                }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(filteredApps, key = { it.packageName }) { app ->
-                        AppItem(
-                            app = app,
-                            isSelected = selectedPackages.contains(app.packageName),
-                            onSelectedChange = { isSelected ->
-                                val newSet = selectedPackages.toMutableSet()
-                                if (isSelected) newSet.add(app.packageName)
-                                else newSet.remove(app.packageName)
-                                onPackagesChanged(newSet)
-                            }
-                        )
+            when {
+                isLoading -> item(key = "loading") {
+                    Box(modifier = Modifier.fillMaxWidth().padding(top = 64.dp), contentAlignment = Alignment.Center) {
+                        LoadingIndicator()
                     }
+                }
+                filteredApps.isEmpty() -> item(key = "empty") {
+                    Text(
+                        stringResource(R.string.no_apps_found),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 64.dp)
+                    )
+                }
+                else -> {
+                    appGroup("selected", R.string.app_section_selected, selectedApps, isSelected = true, onToggle)
+                    appGroup("other", R.string.app_section_other, otherApps, isSelected = false, onToggle)
                 }
             }
         }
     }
 }
 
+/** A section header followed by the apps as one segmented group. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun LazyListScope.appGroup(
+    key: String,
+    title: Int,
+    apps: List<AppInfo>,
+    isSelected: Boolean,
+    onToggle: (AppInfo, Boolean) -> Unit
+) {
+    if (apps.isEmpty()) return
+    item(key = "header-$key") {
+        Box(Modifier.animateItem()) { SectionHeader(stringResource(title)) }
+    }
+    itemsIndexed(apps, key = { _, app -> app.packageName }) { index, app ->
+        AppItem(
+            app = app,
+            isSelected = isSelected,
+            shapes = ListItemDefaults.segmentedShapes(index = index, count = apps.size),
+            onSelectedChange = { onToggle(app, it) },
+            modifier = Modifier
+                .animateItem()
+                .padding(bottom = if (index < apps.lastIndex) ListItemDefaults.SegmentedGap else 0.dp)
+        )
+    }
+}
+
+/** Pill-shaped search field in the expressive style, with a clear button once there's a query. */
+@Composable
+private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(stringResource(R.string.search_apps_hint)) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        trailingIcon = if (query.isNotEmpty()) {
+            {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
+                }
+            }
+        } else {
+            null
+        },
+        singleLine = true,
+        shape = CircleShape,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppItem(
     app: AppInfo,
     isSelected: Boolean,
-    onSelectedChange: (Boolean) -> Unit
+    shapes: ListItemShapes,
+    onSelectedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    ListItem(
+    SegmentedListItem(
+        onClick = { onSelectedChange(!isSelected) },
+        shapes = shapes,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         supportingContent = { Text(app.packageName, style = MaterialTheme.typography.bodySmall) },
         leadingContent = {
             Image(
@@ -138,7 +214,15 @@ fun AppItem(
             )
         },
         trailingContent = {
-            Switch(checked = isSelected, onCheckedChange = onSelectedChange)
+            Switch(
+                checked = isSelected,
+                onCheckedChange = onSelectedChange,
+                thumbContent = if (isSelected) {
+                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                } else {
+                    null
+                }
+            )
         }
     ) {
         Text(app.name)

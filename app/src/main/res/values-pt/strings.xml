@@ -14,6 +14,9 @@
     <string name="app_selection_title">Apps de Música</string>
     <string name="search_apps_hint">Pesquisar aplicativos&#8230;</string>
     <string name="no_apps_found">Nenhum aplicativo encontrado</string>
+    <string name="app_section_selected">Selecionados</string>
+    <string name="app_section_other">Todos os apps</string>
+    <string name="clear_search">Limpar busca</string>
     <string name="chip_dimming">Escurecimento</string>
     <string name="chip_blur">Desfoque</string>
     <string name="chip_background">Fundo</string>
