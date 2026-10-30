@@ -92,6 +92,11 @@ import androidx.lifecycle.lifecycleScope
 import io.github.draumaz.artlock.data.model.ArtworkSource
 import io.github.draumaz.artlock.data.model.WallpaperContent
 import io.github.draumaz.artlock.ui.AppSelectionScreen
+import io.github.draumaz.artlock.ui.TransitionCorners
+import io.github.draumaz.artlock.ui.navEnter
+import io.github.draumaz.artlock.ui.navExit
+import io.github.draumaz.artlock.ui.navPopEnter
+import io.github.draumaz.artlock.ui.navPopExit
 import io.github.draumaz.artlock.ui.theme.ArtlockTheme
 import io.github.draumaz.artlock.wallpaper.AnimatedWallpaperService
 import kotlinx.coroutines.Dispatchers
@@ -140,24 +145,35 @@ class MainActivity : ComponentActivity() {
             ArtlockTheme {
                 val navController = rememberNavController()
 
-                NavHost(navController = navController, startDestination = "main") {
+                NavHost(
+                    navController = navController,
+                    startDestination = "main",
+                    enterTransition = navEnter,
+                    exitTransition = navExit,
+                    popEnterTransition = navPopEnter,
+                    popExitTransition = navPopExit
+                ) {
                     composable("main") {
-                        MainScreen(
-                            onNavigateToAppSelection = { navController.navigate("app_selection") },
-                            onPickImage = { pickImageLauncher.launch("image/*") }
-                        )
+                        TransitionCorners {
+                            MainScreen(
+                                onNavigateToAppSelection = { navController.navigate("app_selection") },
+                                onPickImage = { pickImageLauncher.launch("image/*") }
+                            )
+                        }
                     }
                     composable("app_selection") {
-                        val supportedPackages by app.wallpaperStateStore.supportedPackagesFlow.collectAsStateWithLifecycle(initialValue = emptySet())
-                        AppSelectionScreen(
-                            selectedPackages = supportedPackages,
-                            onPackagesChanged = { newSet ->
-                                lifecycleScope.launch {
-                                    app.wallpaperStateStore.saveSupportedPackages(newSet)
-                                }
-                            },
-                            onBack = { navController.popBackStack() }
-                        )
+                        TransitionCorners {
+                            val supportedPackages by app.wallpaperStateStore.supportedPackagesFlow.collectAsStateWithLifecycle(initialValue = emptySet())
+                            AppSelectionScreen(
+                                selectedPackages = supportedPackages,
+                                onPackagesChanged = { newSet ->
+                                    lifecycleScope.launch {
+                                        app.wallpaperStateStore.saveSupportedPackages(newSet)
+                                    }
+                                },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
                     }
                 }
             }
@@ -244,13 +260,15 @@ class MainActivity : ComponentActivity() {
                 NowPlayingItem(wallpaperContent)
 
                 SectionHeader(stringResource(R.string.actions_section_title))
+                val showingTrackArt = wallpaperContent?.trackTitle != null && wallpaperContent?.staticImagePath != null
                 ActionsGroup(
                     backgroundImagePath = defaultWallpaperPath,
                     // What the wallpaper is showing: the playing track's art, else the background
                     wallpaperImagePath = wallpaperContent?.staticImagePath ?: defaultWallpaperPath,
                     isWallpaperActive = isWallpaperActive,
-                    blurLevel = blurLevel,
-                    dimLevel = dimLevel,
+                    // Only track art is previewed with the effects; the background is shown as-is
+                    blurLevel = if (showingTrackArt) blurLevel else 0,
+                    dimLevel = if (showingTrackArt) dimLevel else 0,
                     onPickImage = onPickImage,
                     onSetWallpaper = {
                         wasWallpaperPickerLaunched = true
