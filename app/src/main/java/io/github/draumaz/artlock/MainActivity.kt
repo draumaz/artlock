@@ -187,6 +187,7 @@ class MainActivity : ComponentActivity() {
         var isWallpaperActive by remember { mutableStateOf(checkWallpaperActive()) }
         var showWallpaperHint by remember { mutableStateOf(false) }
         var wasWallpaperPickerLaunched by remember { mutableStateOf(false) }
+        var wasWallpaperActiveBeforePicker by remember { mutableStateOf(false) }
 
         val wallpaperContent by app.wallpaperStateStore.contentFlow.collectAsStateWithLifecycle(initialValue = null)
         val dimLevel by app.wallpaperStateStore.dimLevelFlow.collectAsStateWithLifecycle(initialValue = 30)
@@ -201,9 +202,10 @@ class MainActivity : ComponentActivity() {
                     isNotificationEnabled = checkNotificationAccess()
                     isWallpaperActive = checkWallpaperActive()
                     if (wasWallpaperPickerLaunched) {
-                        // Only offer troubleshooting if the wallpaper was actually set but nothing is
-                        // being picked up as playing
-                        showWallpaperHint = isWallpaperActive && wallpaperContent?.trackTitle == null
+                        // Only offer troubleshooting if the picker actually set the wallpaper (not if
+                        // the user backed out) but nothing is being picked up as playing
+                        showWallpaperHint = isWallpaperActive && !wasWallpaperActiveBeforePicker &&
+                            wallpaperContent?.trackTitle == null
                         wasWallpaperPickerLaunched = false
                     }
                 }
@@ -271,6 +273,7 @@ class MainActivity : ComponentActivity() {
                     onPickImage = onPickImage,
                     onSetWallpaper = {
                         wasWallpaperPickerLaunched = true
+                        wasWallpaperActiveBeforePicker = isWallpaperActive
                         val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
                             putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(this@MainActivity, AnimatedWallpaperService::class.java))
                         }
@@ -310,14 +313,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Whether Artlock's live wallpaper is currently set on the home or (Android 14+) lock screen. */
+    /** Whether Artlock's live wallpaper is what the lock screen is currently showing. */
     private fun checkWallpaperActive(): Boolean {
         val component = ComponentName(this, AnimatedWallpaperService::class.java)
         val wallpaperManager = WallpaperManager.getInstance(this)
-        val onHome = wallpaperManager.wallpaperInfo?.component == component
-        val onLock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-            wallpaperManager.getWallpaperInfo(WallpaperManager.FLAG_LOCK)?.component == component
-        return onHome || onLock
+        // A negative lock ID means the lock screen has no wallpaper of its own and mirrors the
+        // home screen; otherwise it has a separate one that has to be checked directly
+        val lockSharesHome = wallpaperManager.getWallpaperId(WallpaperManager.FLAG_LOCK) < 0
+        return if (lockSharesHome) {
+            wallpaperManager.wallpaperInfo?.component == component
+        } else {
+            // Before Android 14 a separate lock wallpaper can only be a static image, never ours
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                wallpaperManager.getWallpaperInfo(WallpaperManager.FLAG_LOCK)?.component == component
+        }
     }
 
     private fun checkNotificationAccess(): Boolean {
@@ -653,7 +662,7 @@ fun ActionsGroup(
     }
     val actions = listOf(
         ActionItem(Icons.Default.Image, R.string.chip_background, R.string.btn_choose_default_photo, step = 1, onPickImage, image = backgroundImage, done = backgroundImagePath != null),
-        ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper, image = wallpaperImage, imageShowsEffects = true, done = isWallpaperActive, doneSummary = R.string.wallpaper_set_summary),
+        ActionItem(Icons.Default.Wallpaper, R.string.chip_wallpaper, R.string.btn_choose_wallpaper, step = 2, onSetWallpaper, image = wallpaperImage.takeIf { isWallpaperActive }, imageShowsEffects = true, done = isWallpaperActive, doneSummary = R.string.wallpaper_set_summary),
         ActionItem(Icons.Default.LibraryMusic, R.string.chip_apps, R.string.btn_select_music_apps, step = null, onNavigateToAppSelection, optional = true)
     )
     SegmentedGroup {
